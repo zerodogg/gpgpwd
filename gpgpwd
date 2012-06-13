@@ -462,6 +462,7 @@ sub git
 
         when('pull')
         {
+            print 'Pulling git repository...'."\n";
             if (system('git','pull','--rebase','--quiet') != 0)
             {
                 if(system('git','pull','--quiet') != 0)
@@ -473,6 +474,7 @@ sub git
 
         when('push')
         {
+            print 'Pushing git repository...'."\n";
             system('git','add',basename($path));
             system('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
             system('git','push','--quiet');
