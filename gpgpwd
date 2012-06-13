@@ -389,9 +389,6 @@ sub get
             {
                 $best = $key;
             }
-            elsif(!defined $best)
-            {
-            }
         }
     }
     $best //= $last;
@@ -401,6 +398,8 @@ sub get
         print '(no passwords found for "'.$name.'")'."\n";
         return;
     }
+    
+    print 'Passwords:'."\n";
 
     foreach my $entry (sort keys %matches)
     {
