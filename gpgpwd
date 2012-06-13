@@ -829,7 +829,7 @@ B<gpgpwd> [I<OPTIONS>] [I<COMMAND>] [I<PARAMETERS>]
 =head1 DESCRIPTION
 
 B<gpgpwd> is a terminal-based password manager. It stores a list of passwords
-in GnuPG encrypted file, and allows you to easily retrieve, change and add to
+in a GnuPG encrypted file, and allows you to easily retrieve, change and add to
 that file as needed. It also generates random passwords that you can use,
 easily allowing you to have one "master password" (for your gpg key), with
 one unique and random password for each website or service you use, ensuring
