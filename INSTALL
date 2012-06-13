@@ -1,0 +1,8 @@
+Installation instructions for gpgpwd
+------------------------------------
+
+To install gpgpwd simply run "make install" (without the quotes). If you are
+upgrading from an old version you may need to run "make uninstall" first.
+
+The commands work both to install as a local (non-root) user, and to install
+system-wide as root.
