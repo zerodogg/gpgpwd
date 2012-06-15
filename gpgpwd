@@ -27,7 +27,7 @@ use File::Basename qw(basename dirname);
 use Cwd qw(getcwd);
 use constant { true => 1, false => undef };
 
-my $VERSION          = '0.1';
+my $VERSION          = '0.1.1';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --use-agent --no-verbose --quiet --personal-compress-preferences zlib);
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 1;
@@ -523,7 +523,7 @@ sub usage
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
     print "\n";
     print "Commands:\n";
-    printHelp('','get X','Get password for X');
+    printHelp('','get RX','Get password for RX (where RX can be a perl-compatible regular expression)');
     printHelp('','set X','Add or change password for X');
     printHelp('','remove X','Remove the entry for X');
     printHelp('','batchadd X','Batch add passwords from a file, see the manpage for the file syntax');
@@ -989,7 +989,7 @@ Display some information useful for debugging.
 
 =item B<get> I<NAME>
 
-Get the password for NAME.
+Get the password for NAME. NAME can be a perl-compatible regular expression.
 
 =item B<set> I<NAME>
 

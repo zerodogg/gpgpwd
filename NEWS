@@ -1,2 +1,5 @@
+Version 0.1.1
+- Clarified that 'get' takes a regular expression as its argument
+
 Version 0.1
 - Initial release
