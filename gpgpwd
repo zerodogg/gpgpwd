@@ -507,6 +507,7 @@ sub usage
     printHelp('','--version','Display version information and exit');
     printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
+    printHelp('-G','--no-git','Disable git mode (overriding --git)');
     printHelp('','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
     printHelp('-r','--require-agent','Require use of gpg-agent when prompting for passwords. This reduces gpg verbosity');
@@ -660,6 +661,7 @@ sub main
     $| = 1;
 
     my $noRequireAgent = false;
+    my $noGit = false;
 
     if (!InPath('gpg'))
     {
@@ -689,6 +691,7 @@ sub main
         },
         'p|password-file=s' => \$storagePath,
         'g|git' => \$enableGit,
+        'G|no-git' => \$noGit,
         'debuginfo' => \&debugInfo,
         'c|xclip-clipboard=s' => sub
         {
@@ -758,6 +761,12 @@ sub main
     elsif($requireAgent)
     {
         push(@gpg,'--no-tty');
+    }
+
+    # Disable --git if --no-git was supplied
+    if ($noGit)
+    {
+        $enableGit = false;
     }
 
     given($command)
@@ -908,6 +917,13 @@ change to the file, and I<git commit> and I<git push> after a change has been
 made (it will also pull in read mode, but only if it detects a running ssh-agent).
 This can be used to keep a password database in sync between several different
 computers.
+
+=item B<-G, --no-git>
+
+Disables git(1) mode. This will override any --git parameters that you have
+specified. This can be useful if you have a shell alias that adds --git to
+the default gpgpwd parameters, but you want to operate on a different
+--password-file that is not in git.
 
 =item B<--no-xclip>
 
