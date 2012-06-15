@@ -14,7 +14,7 @@ passwords between different machines.
 Dependencies
 ------------
 Required:
-- perl
+- perl (version 5.10 or later)
 - gpg
 - JSON (perl module - debian package: libjson-perl)
 - Try::Tiny (perl module - debian package: libtry-tiny-perl)
