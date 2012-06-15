@@ -209,8 +209,11 @@ sub loadData
     }
     catch
     {
-        pDie('Failed to decode encrypted JSON data. This error is not recoverable.'."\n".
-            'JSON error: '.$_."\n");
+        pDie('Failed to decode encrypted JSON data. The file is either not a gpgpwd'."\n".
+            'file, or the file is corrupt.'."\n".
+            'JSON error: '.$_."\n\n".
+            'If the file is a corrupt gpgpwd file, you may be able to recover it by'."\n".
+            'manually decrypting the file and then editing it.'."\n");
     };
 
     my $forceUnsafeMessage = "\n".'Ignoring this error may lead to data loss and corruption.'."\n".
@@ -232,7 +235,7 @@ sub loadData
     {
         if ($forceUnsafe)
         {
-            warn('WARNING: Detected possible corruption in '.$path."\n".
+            warn('Warning: '.$path.': does not specify data format version.'."\n".
                 'Continuing anyway because of --force-unsafe'."\n\n");
         }
         else
@@ -244,7 +247,8 @@ sub loadData
     {
         if ($forceUnsafe)
         {
-            warn('WARNING: Detected possible corruption in '.$path."\n".
+            warn($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
+                'This version only supports version '.$dataVersion.
                 'Continuing anyway because of --force-unsafe'."\n\n");
         }
         else
