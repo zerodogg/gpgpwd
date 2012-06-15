@@ -16,7 +16,12 @@ Dependencies
 Required:
 - perl
 - gpg
+- JSON (perl module - debian package: libjson-perl)
+- Try::Tiny (perl module - debian package: libtry-tiny-perl)
 
 Optional:
 - xclip
 - git
+
+To install all dependencies on a Debian-based distribution:
+    aptitude install libjson-perl libtry-tiny-perl gnupg xclip git
