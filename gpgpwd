@@ -355,15 +355,19 @@ sub set
     my $data = shift;
     my $name = shift;
 
+    my $prompt = 'Password> ';
     my $random = randomPwd();
     my $copied = toClipboard($random,true);
+    print 'Enter the password you want to use, or press enter to use the random'."\n";
+    print 'password listed below.'."\n";
     print 'Random password: '.$random.$copied."\n";
-    my $password = '';
-    while(!length($password))
+    print 'Password> ';
+    my $password = <STDIN>;
+    chomp $password;
+    if (!length $password)
     {
-        print 'Password> ';
-        $password = <STDIN>;
-        chomp($password);
+        $password = $random;
+        print "\b\r".$prompt.$random."\n";
     }
 
     if(defined $data->{pwds}->{$name})
