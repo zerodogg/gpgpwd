@@ -19,7 +19,7 @@ endif
 BINDIR ?= $(prefix)/bin
 DATADIR ?= $(prefix)/share
 
-DISTFILES = AUTHORS COPYING gpgpwd INSTALL Makefile NEWS README TODO gpgpwd.1
+DISTFILES = COPYING gpgpwd INSTALL Makefile NEWS README.md gpgpwd.1
 
 # Install gpgpwd
 install:
