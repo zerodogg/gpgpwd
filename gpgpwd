@@ -33,6 +33,7 @@ my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 1;
 my $enableGit        = false;
 my $forceUnsafe      = false;
+my $requireAgent     = false;
 my @clipboardTargets = qw(clipboard);
 
 # Purpose: Wrapper around die() that uses pExit
@@ -117,14 +118,22 @@ sub gpgIn
     my $path = shift;
     my $content;
 
-    print '-- gpg --'."\n";
+    if (!$requireAgent)
+    {
+        print '-- gpg --'."\n";
+    }
 
     open(my $in,'-|',@gpg,'--decrypt',$path) or pDie('Failed to open up communication with gpg: '.$!."\n");
     while(<$in>)
     {
         $content .= $_;
     }
-    print '-- --- --'."\n\n";
+
+    if (!$requireAgent)
+    {
+        print '-- --- --'."\n";
+    }
+    print "\n";
 
     if(not $content)
     {
@@ -500,6 +509,8 @@ sub usage
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
     printHelp('','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
+    printHelp('-r','--require-agent','Require use of gpg-agent when prompting for passwords. This reduces gpg verbosity');
+    printHelp('-R','--no-require-agent','Don\'t require use of gpg-agent when prompting for passwords. This will override --require-agent');
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
     print "\n";
     print "Commands:\n";
@@ -545,7 +556,7 @@ sub printHelp
 	{
 		if(defined $GeneratedDesc)
 		{
-			if ((length($currdesc) + length($part) + 1 + 22) > $maxlen)
+			if ((length($currdesc) + length($part) + 1 + 24) > $maxlen)
 			{
 				$GeneratedDesc .= "\n";
 				$currdesc = '';
@@ -564,7 +575,7 @@ sub printHelp
 	# Print it all
 	foreach my $description (split(/\n/,$GeneratedDesc))
 	{
-		printf "%-4s %-17s %s\n", $short,$long,$description;
+		printf "%-4s %-19s %s\n", $short,$long,$description;
 		# Set short and long to '' to ensure we don't print the options twice
 		$short = '';$long = '';
 	}
@@ -648,15 +659,19 @@ sub main
 {
     $| = 1;
 
+    my $noRequireAgent = false;
+
     if (!InPath('gpg'))
     {
         pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
     }
 
-    if (!@ARGV)
+    if (@ARGV == 0)
     {
         usage(0);
     }
+
+    Getopt::Long::Configure('no_ignore_case','bundling');
 
     GetOptions(
         'help' => sub {
@@ -700,22 +715,49 @@ sub main
                 }
             }
         },
+        'r|require-agent' => \$requireAgent,
+        'R|no-require-agent' => \$noRequireAgent,
     ) or pDie('See --help for more information'."\n");
 
     my $command = shift(@ARGV);
 
     if (!$command)
     {
-        usage(101);
+        usage(0);
     }
 
-    if (-e $storagePath && ! -w $storagePath)
+    # Verify that we're able to read and write to $storagePath, as well as
+    # the directory $storagePath is located in (for backup files).
+    if (-e $storagePath && ! -r $storagePath)
+    {
+        pDie($storagePath.': is not readable');
+    }
+    elsif (-e $storagePath && ! -w $storagePath)
     {
         pDie($storagePath.': is not writeable'."\n");
     }
-    elsif(! -w dirname($storagePath) )
+    if ( ! -w dirname($storagePath) )
     {
-        pDie(dirname($storagePath).': is not writeable'."\n");
+        if (-e $storagePath)
+        {
+            warn('WARNING: '.dirname($storagePath).' is not writable, gpgpwd may be unable'."\n".'to create backup files!'."\n");
+        }
+        else
+        {
+            pDie(dirname($storagePath).': is not writeable'."\n");
+        }
+    }
+
+    # Unset requireAgent if --no-require-agent was specified.
+    if ($noRequireAgent)
+    {
+        $requireAgent = false;
+    }
+    # Add --no-tty to gpg's parameter list to reduce its output and
+    # require a gpg-agent.
+    elsif($requireAgent)
+    {
+        push(@gpg,'--no-tty');
     }
 
     given($command)
@@ -879,10 +921,6 @@ By default gpgpwd will copy passwords to the clipboard (the one that pastes thro
 the usual I<ctrl+v> or "right click -> paste" means). With this you can change it.
 It accepts the following parameters as I<CLIPBOARD>:
 
-=item B<--debuginfo>
-
-Display some information useful for debugging.
-
 =over
 
 =item I<clipboard>
@@ -898,6 +936,26 @@ Copy to the 'selection' clipboard. Paste with ie. middle-click.
 Copy to both the 'normal' and 'selection' clipboards.
 
 =back
+
+=item B<-r, --require-agent>
+
+Require use of gpg-agent when prompting for passwords. This allows gpgpwd to
+reduce the verbosity of gpg, resulting in more compact output, with the caveat
+that gpg won't prompt you for your password if gpg-agent fails.
+
+=item B<-R, --no-require-agent>
+
+Forces gpgpwd not to require a gpg-agent. This will override any --require-agent
+parameters that have been specified. This can be useful if you generally have
+an agent available and like the output when I<--require-agent> is in affect
+better, but sometimes have to use gpgpwd when an agent is unavailable. Ie.
+if you have a shell alias that adds --require-agent to the default gpgpwd
+parameters, you can use -R to override that.
+
+=item B<--debuginfo>
+
+Display some information useful for debugging.
+
 
 =back
 
