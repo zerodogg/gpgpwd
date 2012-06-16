@@ -33,7 +33,7 @@ use constant {
     V_LOG => 2,
 };
 
-my $VERSION          = '0.1.1';
+my $VERSION          = '0.2';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences zlib);
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 1;
@@ -172,7 +172,10 @@ sub gpgIn
     {
         print '-- --- --'."\n";
     }
-    print "\n";
+    if (!$verbosity)
+    {
+        print "\n";
+    }
 
     if(not $content)
     {
@@ -429,8 +432,45 @@ sub get
 {
     my $data  = shift;
     my $name  = shift;
+    my $fuzzy = shift;
 
-    my $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
+    my $regex;
+    if (!$fuzzy)
+    {
+        $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
+    }
+    else
+    {
+        # Construct a fuzzy regex
+        #
+        # This is done by first replacing any 'non-word' character with
+        # '.', then each part is split into a regex that accepts the
+        # current, previous and next character in the word, as well as three
+        # characters after this one, which can be anything.
+        # 
+        # Ie. the $name 'test' will become:
+        # [te].?.?.?[ets].?.?.?[set].?.?.?[ts].?.?.?
+        my $pattern = $name;
+        $pattern =~ s/\W/./g;
+        my @parts = split('',$pattern);
+        $pattern = '';
+        my $prev = '';
+        for(my $i = 0; $i < @parts; $i++)
+        {
+            my $part = $parts[$i];
+            if ($i != 0)
+            {
+                $part .= $parts[$i-1];
+            }
+            if ( defined $parts[$i+1])
+            {
+                $part .= $parts[$i+1];
+            }
+            $pattern .= '['.$part.']'.'.?.?.?';
+        }
+        printv(V_LOG,'Using fuzzy regex: '.$pattern."\n");
+        $regex = qr/$pattern/i;
+    }
     my $last;
     my $best;
 
@@ -452,11 +492,20 @@ sub get
 
     if (! (keys %matches))
     {
+        if (!$fuzzy)
+        {
+            return get($data,$name,true);
+        }
         print '(no passwords found for "'.$name.'")'."\n";
         return;
     }
     
-    print 'Passwords:'."\n";
+    print 'Passwords:';
+    if ($fuzzy)
+    {
+        print ' (found using fuzzy search)';
+    }
+    print "\n";
 
     foreach my $entry (sort keys %matches)
     {
@@ -1061,7 +1110,9 @@ Display some information useful for debugging.
 
 =item B<get> I<NAME>
 
-Get the password for NAME. NAME can be a perl-compatible regular expression.
+Get the password for NAME. NAME can be a perl-compatible regular expression. If
+no matches are found gpgpwd will attempt to perform a fuzzy search, to see if
+something similar can be found (ie. to correct for typos).
 
 =item B<set> I<NAME>
 
