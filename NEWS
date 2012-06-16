@@ -1,6 +1,7 @@
 Version 0.1.1
 - Clarified that 'get' takes a regular expression as its argument
 - Added --disable-agent, used to disable use of gpg-agent
+- Added --verbose and some verbose messages
 
 Version 0.1
 - Initial release

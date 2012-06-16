@@ -25,7 +25,13 @@ use IPC::Open2 qw(open2);
 use File::Copy qw(move);
 use File::Basename qw(basename dirname);
 use Cwd qw(getcwd);
-use constant { true => 1, false => undef };
+use constant {
+    true => 1,
+    false => undef,
+
+    V_INFO => 1,
+    V_LOG => 2,
+};
 
 my $VERSION          = '0.1.1';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences zlib);
@@ -35,7 +41,35 @@ my $enableGit        = false;
 my $forceUnsafe      = false;
 my $requireAgent     = false;
 my $useGpgAgent      = true;
+my $verbosity        = 0;
 my @clipboardTargets = qw(clipboard);
+
+# Purpose: print() wrapper that obeys $verbosity
+# Usage: printv(LEVEL, ...);
+# LEVEL is one of the V_* constants, ... are the normal print() parameters
+sub printv
+{
+    my $level = shift;
+    if ($verbosity >= $level)
+    {
+        my @prefixes;
+        $prefixes[V_INFO] = 'info';
+        $prefixes[V_LOG]  = 'log';
+        printf('[gpgpwd %-4s] ',$prefixes[$level]);
+        print @_;
+    }
+}
+
+# Purpose: system() wrapper that outputs the command if $verboity >= V_LOG
+# Usage: Same as system()
+sub psystem
+{
+    if ($verbosity >= V_LOG)
+    {
+        printv(V_LOG,'Running: '.join(' ',@_)."\n");
+    }
+    return system(@_);
+}
 
 # Purpose: Wrapper around die() that uses pExit
 # Usage: Same as die()
@@ -78,6 +112,7 @@ sub toClipboard
     my $returnString = shift;
     if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
     {
+        printv(V_LOG,'Use of xclip disabled: Either not installed, or no DISPLAY set'."\n");
         if ($returnString)
         {
             return '';
@@ -103,6 +138,8 @@ sub randomPwd
     my $length = shift;
     $length //= 15;
     my $pwd = '';
+    # These characters are chosen specifically because they are usually selectable in
+    # a terminal by simply double-clicking on the string.
     my @chars = ('a'..'z','A'..'Z',0..9,',','.','/','?','%','&','#',':','_','=','+','@','~');
     while(length($pwd) < $length)
     {
@@ -124,6 +161,7 @@ sub gpgIn
         print '-- gpg --'."\n";
     }
 
+    printv(V_LOG,'Reading data using: '.join(' ',@gpg).' --decrypt '.$path."\n");
     open(my $in,'-|',@gpg,'--decrypt',$path) or pDie('Failed to open up communication with gpg: '.$!."\n");
     while(<$in>)
     {
@@ -160,6 +198,7 @@ sub gpgOut
     {
         move($path,$path.'~') or pDie('Failed to create backup file: '.$!."\n".'Refusing to write data to avoid loss of previous data'."\n");
     }
+    printv(V_LOG,'Writing data using: '.join(' ',@gpg).' --encrypt --output '.$path."\n");
     open(my $out,'|-',@gpg,'--encrypt','--output',$path) or pDie('Failed to open up communication with gpg: '.$!."\n");
     print {$out} $data or pDie('Failed to write data to gpg for output: '.$!."\n");
     close($out) or do {
@@ -475,14 +514,18 @@ sub git
                 $_ = 'pull';
                 continue;
             }
+            else
+            {
+                printv(V_INFO,'Not pulling since there is no SSH_AGENT_PID environment variable'."\n");
+            }
         }
 
         when('pull')
         {
             print 'Pulling git repository...'."\n";
-            if (system('git','pull','--rebase','--quiet') != 0)
+            if (psystem('git','pull','--rebase','--quiet') != 0)
             {
-                if(system('git','pull','--quiet') != 0)
+                if(psystem('git','pull','--quiet') != 0)
                 {
                     pDie('Failed to git pull, you must manually resolve the conflict'."\n");
                 }
@@ -492,9 +535,9 @@ sub git
         when('push')
         {
             print 'Pushing git repository...'."\n";
-            system('git','add',basename($path));
-            system('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
-            system('git','push','--quiet');
+            psystem('git','add',basename($path));
+            psystem('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
+            psystem('git','push','--quiet');
         }
     }
 
@@ -514,6 +557,7 @@ sub usage
     print "Options:\n";
     printHelp('','--help','View this help screen');
     printHelp('','--version','Display version information and exit');
+    printHelp('-v','--verbose','Increase verbosity (can be supplied multiple times)');
     printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
     printHelp('-G','--no-git','Disable git mode (overriding --git)');
@@ -694,6 +738,7 @@ sub main
             print 'gpgpwd version '.$VERSION."\n";
             pExit(0);
         },
+        'v|verbose+' => \$verbosity,
         'force-unsafe' => sub
         {
             warn('WARNING: Running in --force-unsafe mode. Data corruption may occur!'."\n");
@@ -923,6 +968,11 @@ Display the help screen
 =item B<--version>
 
 Output the gpgpwd version and exit
+
+=item B<-v, --verbose>
+
+Increase gpgpwd verbosity. May be supplied multiple times to further increase
+verbosity.
 
 =item B<-p, --password-file> I<FILE>
 
