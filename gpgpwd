@@ -679,6 +679,7 @@ sub debugInfo
     printf($pattern,'Data file',$storagePath);
     printf($pattern, 'Perl version', sprintf('%vd',$^V));
     printf($pattern, 'gpg version', getVersionFrom('gpg','--version'));
+    printf($pattern, 'gpg2 version', getVersionFrom('gpg2','--version'));
     printf($pattern, 'xclip version',getVersionFrom('xclip','-version'));
     printf($pattern,'git version',getVersionFrom('git','--version'));
 
@@ -707,7 +708,7 @@ sub main
     my $noRequireAgent = false;
     my $noGit = false;
 
-    if (!InPath('gpg'))
+    if (!InPath('gpg') && !InPath('gpg2'))
     {
         pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
     }
@@ -775,6 +776,19 @@ sub main
     if (!$command)
     {
         usage(0);
+    }
+
+    if (!InPath('gpg'))
+    {
+        # Note: If gpg isn't installed then we *know* gpg2 is installed,
+        # because if neither is installed we refuse to run at all (test at the
+        # top of main() )
+        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
+        $gpg[0] = 'gpg2';
+        if (! $useGpgAgent)
+        {
+            pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
+        }
     }
 
     # Verify that we're able to read and write to $storagePath, as well as
