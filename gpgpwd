@@ -1114,6 +1114,9 @@ Get the password for NAME. NAME can be a perl-compatible regular expression. If
 no matches are found gpgpwd will attempt to perform a fuzzy search, to see if
 something similar can be found (ie. to correct for typos).
 
+If you want to retrieve your entire database you may simply supply . as NAME,
+since it accepts a regular expression and . will match everything.
+
 =item B<set> I<NAME>
 
 Set (add or change) the password for NAME. You will be prompted interactively for the
