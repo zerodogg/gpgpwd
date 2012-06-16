@@ -642,6 +642,10 @@ sub printHelp
 # Usage: version = getVersionFrom('command');
 sub getVersionFrom
 {
+    if (!InPath($_[0]))
+    {
+        return 'not installed';
+    }
     eval('use IPC::Open3 qw(open3);');
     open3(my $in, my $out, my $err,@_);
     my $data;
@@ -675,22 +679,8 @@ sub debugInfo
     printf($pattern,'Data file',$storagePath);
     printf($pattern, 'Perl version', sprintf('%vd',$^V));
     printf($pattern, 'gpg version', getVersionFrom('gpg','--version'));
-    if(InPath('xclip'))
-    {
-        printf($pattern, 'xclip version',getVersionFrom('xclip','-version'));
-    }
-    else
-    {
-        printf($pattern,'xclip','not installed');
-    }
-    if(InPath('git'))
-    {
-        printf($pattern,'git version',getVersionFrom('git','--version'));
-    }
-    else
-    {
-        printf($pattern,'git','not installed');
-    }
+    printf($pattern, 'xclip version',getVersionFrom('xclip','-version'));
+    printf($pattern,'git version',getVersionFrom('git','--version'));
 
     eval('use Digest::MD5;');
     my $md5 = Digest::MD5->new();
