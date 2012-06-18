@@ -432,45 +432,127 @@ sub get
 {
     my $data  = shift;
     my $name  = shift;
-    my $fuzzy = shift;
+    my $fuzzySearch = false;
+    my $best;
+    my $matches;
 
-    my $regex;
-    if (!$fuzzy)
+    foreach my $fuzzy (0..6)
     {
-        $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
-    }
-    else
-    {
-        # Construct a fuzzy regex
-        #
-        # This is done by first replacing any 'non-word' character with
-        # '.', then each part is split into a regex that accepts the
-        # current, previous and next character in the word, as well as three
-        # characters after this one, which can be anything.
-        # 
-        # Ie. the $name 'test' will become:
-        # [te].?.?.?[ets].?.?.?[set].?.?.?[ts].?.?.?
-        my $pattern = $name;
-        $pattern =~ s/\W/./g;
-        my @parts = split('',$pattern);
-        $pattern = '';
-        my $prev = '';
-        for(my $i = 0; $i < @parts; $i++)
+        my $regex;
+        if ($fuzzy == 0)
         {
-            my $part = $parts[$i];
-            if ($i != 0)
-            {
-                $part .= $parts[$i-1];
-            }
-            if ( defined $parts[$i+1])
-            {
-                $part .= $parts[$i+1];
-            }
-            $pattern .= '['.$part.']'.'.?.?.?';
+            $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
         }
-        printv(V_LOG,'Using fuzzy regex: '.$pattern."\n");
-        $regex = qr/$pattern/i;
+        # Fuzzy method 1: Simple typos or missing characters
+        elsif ($fuzzy < 5)
+        {
+            # This is done by first replacing any 'non-word' character with
+            # '.', then each part is split into a regex that accepts the
+            # current, previous and next character in the word, as well as $fuzzy-1
+            # characters after this one, which can be anything.
+            # 
+            # Ie. the $name 'test', and $fuzzy=1 will become:
+            # [te][tes][est][st]
+            # 
+            # Whereas $fuzzy=4 will become:
+            # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
+            my $pattern = $name;
+            $pattern =~ s/\W/./g;
+            my @parts = split('',$pattern);
+            $pattern = '';
+            my $prev = '';
+            my $fuzzyNo = $fuzzy-1;
+            my $fuzzyString = '';
+            while($fuzzyNo--)
+            {
+                $fuzzyString .= '.?';
+            }
+            for(my $i = 0; $i < @parts; $i++)
+            {
+                my $part ='';
+                if ($i != 0)
+                {
+                    $part .= $parts[$i-1];
+                }
+                $part .= $parts[$i];
+                if ( defined $parts[$i+1])
+                {
+                    $part .= $parts[$i+1];
+                }
+                $pattern .= '['.$part.']'.$fuzzyString;
+            }
+            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
+            $regex = qr/$pattern/i;
+        }
+        # Fuzzy method 2: Extra characters, or other mistakes, inside the word
+        elsif ($fuzzy == 5)
+        {
+            # This is based upon the assumption that the first and last characters
+            # are correct, and that all characters that we need are present.
+            #
+            # All non-word characters are removed.
+            my $pattern = $name;
+            $pattern =~ s/\W//g;
+            my @parts = split('',$pattern);
+            $pattern = $parts[0].'['.$pattern.']+'.$parts[-1];
+            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
+            $regex = qr/$pattern/;
+        }
+        # Fuzzy method 3: Correct length, incorrect order
+        else
+        {
+            # This is very general, all non-word characters are removed, and
+            # we construct a character class consisting of all of the remaining
+            # characters. This character class has to be present at least length($word)
+            # times. This only works for short words, and isn't used if length > 8
+            next if length($name) > 8;
+            my $pattern = $name;
+            $pattern =~ s/\W//g;
+            $pattern = '['.$pattern.']{'.length($pattern).'}';
+            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
+            $regex = qr/$pattern/;
+        }
+
+        ($matches,$best) = getMatches($data,$regex,$name);
+
+        if(keys %{$matches})
+        {
+            if ($fuzzy)
+            {
+                $fuzzySearch = true;
+            }
+            last;
+        }
     }
+
+    if (! (keys %{$matches}))
+    {
+        print '(no passwords found for "'.$name.'")'."\n";
+        return;
+    }
+    
+    print 'Passwords:';
+    if ($fuzzySearch)
+    {
+        print ' (found using fuzzy search)';
+    }
+    print "\n";
+
+    foreach my $entry (sort keys %{$matches})
+    {
+        next if $entry eq $best;
+        outputEntry($entry,$matches->{$entry},0);
+    }
+    outputEntry($best,$matches->{$best},true);
+}
+
+# Purpose: Get data entries that match a given regex
+# Usage: ($matches,$best) = getMatches($data,$regex,$name);
+sub getMatches
+{
+    my $data = shift;
+    my $regex = shift;
+    my $name = shift;
     my $last;
     my $best;
 
@@ -489,30 +571,7 @@ sub get
         }
     }
     $best //= $last;
-
-    if (! (keys %matches))
-    {
-        if (!$fuzzy)
-        {
-            return get($data,$name,true);
-        }
-        print '(no passwords found for "'.$name.'")'."\n";
-        return;
-    }
-    
-    print 'Passwords:';
-    if ($fuzzy)
-    {
-        print ' (found using fuzzy search)';
-    }
-    print "\n";
-
-    foreach my $entry (sort keys %matches)
-    {
-        next if $entry eq $best;
-        outputEntry($entry,$matches{$entry},0);
-    }
-    outputEntry($best,$matches{$best},true);
+    return(\%matches,$best);
 }
 
 # Purpose: Output a password
