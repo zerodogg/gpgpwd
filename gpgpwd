@@ -1033,7 +1033,7 @@ sub main
         {
             if (!@ARGV)
             {
-                warn('Missing parameter to set: what to set');
+                warn('Missing parameter to set: what to set'."\n");
                 usage(104);
             }
             elsif(@ARGV != 1)
@@ -1213,7 +1213,7 @@ empty lines and lines starting with #.
 
 =over
 
-=item gpgpwd add test
+=item gpgpwd set test
 
 Add a password for 'test' to the database, gpgpwd will prompt you for the password.
 
@@ -1225,7 +1225,7 @@ Retrieve the password we just added.
 
 Remove test from the adatabase
 
-=item gpgpwd -g add testpwd
+=item gpgpwd -g set testpwd
 
 Add the password for testpwd to the database and commit+push the file using
 git afterwards.
@@ -1258,7 +1258,8 @@ B<gpgpwd> is written by Eskild Hustvedt I<<code aatt zerodogg d0t org>>
 
 =item I<~/.gpgpwddb>
 
-The default save location for the password database, overrideable by using I<--password-file>.
+The default save location for the password database, overrideable by using
+I<--password-file>.
 
 =back
 
