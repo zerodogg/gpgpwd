@@ -791,6 +791,17 @@ sub debugInfo
     printf($pattern, 'xclip version',getVersionFrom('xclip','-version'));
     printf($pattern,'git version',getVersionFrom('git','--version'));
 
+    my $flags = '';
+    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent))
+    {
+        if (! eval('$'.$flag))
+        {
+            next;
+        }
+        $flags .= $flag.' ';
+    }
+    printf($pattern,'flags',$flags);
+
     eval('use Digest::MD5;');
     my $md5 = Digest::MD5->new();
     my $self = $0;
