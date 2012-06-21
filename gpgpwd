@@ -446,8 +446,8 @@ sub get
         # Fuzzy method 1: Simple typos or missing characters
         elsif ($fuzzy < 5)
         {
-            # This is done by first replacing any 'non-word' character with
-            # '.', then each part is split into a regex that accepts the
+            # This is done by first removing any 'non-word' character.
+            # Then each part is split into a regex that accepts the
             # current, previous and next character in the word, as well as $fuzzy-1
             # characters after this one, which can be anything.
             # 
@@ -457,7 +457,7 @@ sub get
             # Whereas $fuzzy=4 will become:
             # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
             my $pattern = $name;
-            $pattern =~ s/\W/./g;
+            $pattern =~ s/\W//g;
             my @parts = split('',$pattern);
             $pattern = '';
             my $prev = '';
