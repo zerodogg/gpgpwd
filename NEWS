@@ -5,6 +5,7 @@ Version 0.2
 - Will now use gpg2 if gpg isn't installed
 - Will now perform a fuzzy search when nothing matching the exact
     regex is found
+- Fixed disabling of xclip
 
 Version 0.1
 - Initial release

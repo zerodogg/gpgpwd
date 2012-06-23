@@ -40,6 +40,7 @@ my $dataVersion      = 1;
 my $enableGit        = false;
 my $forceUnsafe      = false;
 my $requireAgent     = false;
+my $useXclip         = true;
 my $useGpgAgent      = true;
 my $verbosity        = 0;
 my @clipboardTargets = qw(clipboard);
@@ -110,6 +111,14 @@ sub toClipboard
 {
     my $value = shift;
     my $returnString = shift;
+    if (!$useXclip)
+    {
+        if ($returnString)
+        {
+            return '';
+        }
+        return;
+    }
     if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
     {
         printv(V_LOG,'Use of xclip disabled: Either not installed, or no DISPLAY set'."\n");
@@ -817,7 +826,7 @@ sub debugInfo
     printf($pattern,'git version',getVersionFrom('git','--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent))
+    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent useXclip))
     {
         if (! eval('$'.$flag))
         {
@@ -883,6 +892,7 @@ sub main
         'g|git' => \$enableGit,
         'G|no-git' => \$noGit,
         'debuginfo' => \&debugInfo,
+        'no-xclip' => sub { $useXclip = false; },
         'c|xclip-clipboard=s' => sub
         {
             shift;
