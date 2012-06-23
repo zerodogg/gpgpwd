@@ -432,11 +432,11 @@ sub get
 {
     my $data  = shift;
     my $name  = shift;
-    my $fuzzySearch = false;
+    my $fuzzySearch = 0;
     my $best;
     my $matches;
 
-    foreach my $fuzzy (0..6)
+    foreach my $fuzzy (0..7)
     {
         my $pattern = $name;
 
@@ -500,7 +500,7 @@ sub get
             $regex = qr/$pattern/;
         }
         # Fuzzy method 3: Correct length, incorrect order
-        else
+        elsif ($fuzzy == 6)
         {
             # This is very general, all non-word characters are removed, and
             # we construct a character class consisting of all of the remaining
@@ -509,6 +509,24 @@ sub get
             next if length($name) > 8;
             $pattern = '['.$pattern.']{'.length($pattern).'}';
             $regex = qr/$pattern/;
+        }
+        # Fuzzy method 4: Acronym detection
+        elsif($fuzzy == 7)
+        {
+            # This is about as general as it can get. We assume all characters are
+            # present, but that it was added as an acronym. Ie. "example site" could
+            # be "es". It's extremely general and thus any match gets labelled
+            # "very fuzzy", instead of just "fuzzy". It also isn't used if the expression
+            # is longer than 12 characters.
+            next if length($name) > 12;
+            $fuzzySearch++;
+
+            $pattern = '^['.$pattern.']+$';
+            $regex = qr/$pattern/i;
+        }
+        else
+        {
+            pDie('Attempted to use unknown fuzzy method no. '.$fuzzy);
         }
 
         if ($fuzzy)
@@ -521,7 +539,7 @@ sub get
         {
             if ($fuzzy)
             {
-                $fuzzySearch = true;
+                $fuzzySearch++;
             }
             last;
         }
@@ -536,7 +554,12 @@ sub get
     print 'Passwords:';
     if ($fuzzySearch)
     {
-        print ' (found using fuzzy search)';
+        print ' (found using ';
+        if ($fuzzySearch > 1)
+        {
+            print 'very ';
+        }
+        print 'fuzzy search)';
     }
     print "\n";
 
