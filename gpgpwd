@@ -438,6 +438,13 @@ sub get
 
     foreach my $fuzzy (0..6)
     {
+        my $pattern = $name;
+
+        if ($fuzzy > 0)
+        {
+            $pattern =~ s/\W//g;
+        }
+
         my $regex;
         if ($fuzzy == 0)
         {
@@ -456,8 +463,6 @@ sub get
             # 
             # Whereas $fuzzy=4 will become:
             # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
-            my $pattern = $name;
-            $pattern =~ s/\W//g;
             my @parts = split('',$pattern);
             $pattern = '';
             my $prev = '';
@@ -491,8 +496,6 @@ sub get
             # are correct, and that all characters that we need are present.
             #
             # All non-word characters are removed.
-            my $pattern = $name;
-            $pattern =~ s/\W//g;
             my @parts = split('',$pattern);
             $pattern = $parts[0].'['.$pattern.']+'.$parts[-1];
             printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
@@ -506,8 +509,6 @@ sub get
             # characters. This character class has to be present at least length($word)
             # times. This only works for short words, and isn't used if length > 8
             next if length($name) > 8;
-            my $pattern = $name;
-            $pattern =~ s/\W//g;
             $pattern = '['.$pattern.']{'.length($pattern).'}';
             printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
             $regex = qr/$pattern/;
