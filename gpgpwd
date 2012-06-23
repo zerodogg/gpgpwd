@@ -486,7 +486,6 @@ sub get
                 }
                 $pattern .= '['.$part.']'.$fuzzyString;
             }
-            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
             $regex = qr/$pattern/i;
         }
         # Fuzzy method 2: Extra characters, or other mistakes, inside the word
@@ -498,7 +497,6 @@ sub get
             # All non-word characters are removed.
             my @parts = split('',$pattern);
             $pattern = $parts[0].'['.$pattern.']+'.$parts[-1];
-            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
             $regex = qr/$pattern/;
         }
         # Fuzzy method 3: Correct length, incorrect order
@@ -510,10 +508,13 @@ sub get
             # times. This only works for short words, and isn't used if length > 8
             next if length($name) > 8;
             $pattern = '['.$pattern.']{'.length($pattern).'}';
-            printv(V_LOG,'Trying fuzzy regex: '.$pattern."\n");
             $regex = qr/$pattern/;
         }
 
+        if ($fuzzy)
+        {
+            printv(V_LOG,'Trying fuzzy regex ('.$fuzzy.'): '.$pattern."\n");
+        }
         ($matches,$best) = getMatches($data,$regex,$name);
 
         if(keys %{$matches})
