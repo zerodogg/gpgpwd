@@ -61,7 +61,7 @@ sub printv
     }
 }
 
-# Purpose: system() wrapper that outputs the command if $verboity >= V_LOG
+# Purpose: system() wrapper that outputs the command if $verbosity >= V_LOG
 # Usage: Same as system()
 sub psystem
 {
@@ -1205,7 +1205,6 @@ Disables all use of gpg-agent. This option implies --no-require-agent.
 =item B<--debuginfo>
 
 Display some information useful for debugging.
-
 
 =back
 
