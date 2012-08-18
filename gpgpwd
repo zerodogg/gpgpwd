@@ -33,7 +33,7 @@ use constant {
     V_LOG => 2,
 };
 
-my $VERSION          = '0.2';
+my $VERSION          = '0.3';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences zlib);
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 1;
@@ -707,6 +707,7 @@ sub usage
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
     printHelp('-r','--require-agent','Require use of gpg-agent when prompting for passwords. This reduces gpg verbosity');
     printHelp('-R','--no-require-agent','Don\'t require use of gpg-agent when prompting for passwords. This will override --require-agent');
+    printHelp('-T','--try-require-agent','If a gpg-agent is running, require it to be used, otherwise prompt for passwords');
     printHelp('','--disable-agent','Disable all use of gpg-agent (implies -R)');
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
     print "\n";
@@ -886,7 +887,7 @@ sub main
         'force-unsafe' => sub
         {
             warn('WARNING: Running in --force-unsafe mode. Data corruption may occur!'."\n");
-            $forceUnsafe = 1;
+            $forceUnsafe = true;
         },
         'p|password-file=s' => \$storagePath,
         'g|git' => \$enableGit,
@@ -920,6 +921,18 @@ sub main
         },
         'r|require-agent' => \$requireAgent,
         'R|no-require-agent' => \$noRequireAgent,
+        'T|try-require-agent' => sub
+        {
+            if ($ENV{GPG_AGENT_INFO})
+            {
+                $requireAgent = true;
+            }
+            else
+            {
+                $noRequireAgent = true;
+                $useGpgAgent = false;
+            }
+        },
         'disable-agent' => sub {
             $useGpgAgent = false;
         },
@@ -1197,6 +1210,12 @@ an agent available and like the output when I<--require-agent> is in affect
 better, but sometimes have to use gpgpwd when an agent is unavailable. Ie.
 if you have a shell alias that adds --require-agent to the default gpgpwd
 parameters, you can use -R to override that.
+
+=item B<-T, --try-require-agent>
+
+If a gpg-agent is running (if the GPG_AGENT_INFO environment variable is set)
+this acts like --require-agent, if it is not then this acts as
+--disable-agent.
 
 =item B<--disable-agent>
 

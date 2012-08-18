@@ -1,3 +1,7 @@
+Version 0.3
+- Added --try-require-agent, acts like --require-agent if an agent
+    is available, and like --no-require-agent if it isn't
+
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
 - Added --disable-agent, used to disable use of gpg-agent
