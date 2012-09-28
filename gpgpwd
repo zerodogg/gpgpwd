@@ -40,6 +40,7 @@ my $dataVersion      = 1;
 my $enableGit        = false;
 my $forceUnsafe      = false;
 my $requireAgent     = false;
+my $fastGitMode      = false;
 my $useXclip         = true;
 my $useGpgAgent      = true;
 my $verbosity        = 0;
@@ -402,6 +403,23 @@ sub loadFromFile
     print 'Read '.$read.' entries from '.$file."\n";
 }
 
+# Purpose: Retrieve a simplistic "file ID" string for a file
+# Usage: id = getFileID(FILE);
+# The ID string is a very simple string combining the file size and
+# file change time.
+sub getFileID
+{
+    my $file = shift;
+    if (! -e $file || ! -r $file)
+    {
+        pDie('Unable to read '.$file."\n");
+    }
+    my $ID = -s $file;
+    $ID .= '|';
+    $ID .= (stat($file))[9];
+    return $ID;
+}
+
 # Purpose: Set a password value in the database
 # Usage: set($data,NAME);
 # $data is the data hashref
@@ -445,11 +463,11 @@ sub get
     my $best;
     my $matches;
 
-    foreach my $fuzzy (0..7)
+    foreach my $fuzzy (0..8)
     {
         my $pattern = $name;
 
-        if ($fuzzy > 0)
+        if ($fuzzy > 1)
         {
             $pattern =~ s/\W//g;
         }
@@ -459,8 +477,24 @@ sub get
         {
             $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
         }
-        # Fuzzy method 1: Simple typos or missing characters
-        elsif ($fuzzy < 5)
+        # Fuzzy method 1: Multiple words in wrong order
+        elsif($fuzzy == 1)
+        {
+            my @parts = split(/\W/,$name);
+            my $expr = '('.join('|',@parts).')';
+            $pattern = '';
+            while(defined shift(@parts))
+            {
+                if ($pattern)
+                {
+                    $pattern .= '.+';
+                }
+                $pattern .= $expr;
+            }
+            $regex = qr/$pattern/i;
+        }
+        # Fuzzy method 2: Simple typos or missing characters
+        elsif ($fuzzy < 6)
         {
             # This is done by first removing any 'non-word' character.
             # Then each part is split into a regex that accepts the
@@ -497,8 +531,8 @@ sub get
             }
             $regex = qr/$pattern/i;
         }
-        # Fuzzy method 2: Extra characters, or other mistakes, inside the word
-        elsif ($fuzzy == 5)
+        # Fuzzy method 3: Extra characters, or other mistakes, inside the word
+        elsif ($fuzzy == 6)
         {
             # This is based upon the assumption that the first and last characters
             # are correct, and that all characters that we need are present.
@@ -508,8 +542,8 @@ sub get
             $pattern = $parts[0].'['.$pattern.']+'.$parts[-1];
             $regex = qr/$pattern/;
         }
-        # Fuzzy method 3: Correct length, incorrect order
-        elsif ($fuzzy == 6)
+        # Fuzzy method 4: Correct length, incorrect order
+        elsif ($fuzzy == 7)
         {
             # This is very general, all non-word characters are removed, and
             # we construct a character class consisting of all of the remaining
@@ -519,8 +553,8 @@ sub get
             $pattern = '['.$pattern.']{'.length($pattern).'}';
             $regex = qr/$pattern/;
         }
-        # Fuzzy method 4: Acronym detection
-        elsif($fuzzy == 7)
+        # Fuzzy method 5: Acronym detection
+        elsif($fuzzy == 8)
         {
             # This is about as general as it can get. We assume all characters are
             # present, but that it was added as an acronym. Ie. "example site" could
@@ -664,7 +698,14 @@ sub git
 
         when('pull')
         {
-            print 'Pulling git repository...'."\n";
+            if ($fastGitMode)
+            {
+                print "\n(git): ";
+            }
+            elsif (!$fastGitMode)
+            {
+                print 'Pulling git repository...'."\n";
+            }
             if (psystem('git','pull','--rebase','--quiet') != 0)
             {
                 if(psystem('git','pull','--quiet') != 0)
@@ -702,7 +743,8 @@ sub usage
     printHelp('-v','--verbose','Increase verbosity (can be supplied multiple times)');
     printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
-    printHelp('-G','--no-git','Disable git mode (overriding --git)');
+    printHelp('','--fast-git','Enable fast git mode (like git mode, but pulls after getting a password)');
+    printHelp('-G','--no-git','Disable git mode (overriding --git and --fast-git)');
     printHelp('','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
     printHelp('-r','--require-agent','Require use of gpg-agent when prompting for passwords. This reduces gpg verbosity');
@@ -890,6 +932,10 @@ sub main
             $forceUnsafe = true;
         },
         'p|password-file=s' => \$storagePath,
+        'fast-git' => sub {
+            $enableGit = 1;
+            $fastGitMode = 1;
+        },
         'g|git' => \$enableGit,
         'G|no-git' => \$noGit,
         'debuginfo' => \&debugInfo,
@@ -1004,13 +1050,15 @@ sub main
     # Disable --git if --no-git was supplied
     if ($noGit)
     {
-        $enableGit = false;
+        $enableGit   = false;
+        $fastGitMode = false;
     }
 
     given($command)
     {
         when('get')
         {
+            my $fileID = getFileID($storagePath);
             if(! @ARGV)
             {
                 warn('Missing parameter to get: what to retrieve'."\n");
@@ -1021,9 +1069,25 @@ sub main
                 pDie('Too many parameters for "get"'."\n");
             }
 
-            git('safepull',$storagePath);
+            if (!$fastGitMode)
+            {
+                git('safepull',$storagePath);
+            }
             my $data = loadData($storagePath);
             get($data,@ARGV);
+
+            if ($fastGitMode)
+            {
+                git('safepull',$storagePath);
+                # If the file has changed due to the pull, then we re-fetch
+                if ($fileID ne getFileID($storagePath))
+                {
+                    print "\n";
+                    print "File updated by git, re-reading passwords:\n";
+                    my $data = loadData($storagePath);
+                    get($data,@ARGV);
+                }
+            }
         }
 
         when('batchadd')
@@ -1160,6 +1224,14 @@ change to the file, and I<git commit> and I<git push> after a change has been
 made (it will also pull in read mode, but only if it detects a running ssh-agent).
 This can be used to keep a password database in sync between several different
 computers.
+
+=item B<--fast-git>
+
+Enables fast git(1) mode. This is identical to I<--git> mode except for when
+gpgpwd is in read ("get") mode. In read mode it will pull B<after> getting a
+password instead of before, giving you faster access to your passwords. If it
+detects that the password file has changed after pulling, gpgpwd will process
+your get request again, in case the password you wanted has changed.
 
 =item B<-G, --no-git>
 

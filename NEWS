@@ -1,6 +1,9 @@
 Version 0.3
 - Added --try-require-agent, acts like --require-agent if an agent
     is available, and like --no-require-agent if it isn't
+- Added --fast-git, provides faster access to passwords in git
+    by pulling after getting a password (and then re-getting
+    it if the file changed)
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
