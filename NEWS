@@ -4,6 +4,7 @@ Version 0.3
 - Added --fast-git, provides faster access to passwords in git
     by pulling after getting a password (and then re-getting
     it if the file changed)
+- Added a 'rename' command
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
