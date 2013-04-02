@@ -6,6 +6,7 @@ Version 0.3
     it if the file changed)
 - Added a 'rename' command
 - Added short versions of several parameters
+- Improved fuzzy searching
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument

@@ -463,7 +463,7 @@ sub get
     my $best;
     my $matches;
 
-    foreach my $fuzzy (0..8)
+    foreach my $fuzzy (0..10)
     {
         my $pattern = $name;
 
@@ -477,23 +477,32 @@ sub get
         {
             $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
         }
-        # Fuzzy method 1: Multiple words in wrong order
-        elsif($fuzzy == 1)
+        # Fuzzy method: Multiple words in wrong order
+        # Fuzzy method: Multiple words, where one of them is wrong
+        elsif($fuzzy == 1 || $fuzzy == 8)
         {
             my @parts = split(/\W/,$name);
+            next if scalar(@parts) == 1;
             my $expr = '('.join('|',@parts).')';
             $pattern = '';
-            while(defined shift(@parts))
+            if ($fuzzy == 1)
             {
-                if ($pattern)
+                while(defined shift(@parts))
                 {
-                    $pattern .= '.+';
+                    if ($pattern)
+                    {
+                        $pattern .= '.+';
+                    }
+                    $pattern .= $expr;
                 }
-                $pattern .= $expr;
+            }
+            elsif($fuzzy == 8)
+            {
+                $pattern = $expr;
             }
             $regex = qr/$pattern/i;
         }
-        # Fuzzy method 2: Simple typos or missing characters
+        # Fuzzy method: Simple typos or missing characters
         elsif ($fuzzy < 6)
         {
             # This is done by first removing any 'non-word' character.
@@ -531,8 +540,8 @@ sub get
             }
             $regex = qr/$pattern/i;
         }
-        # Fuzzy method 3: Extra characters, or other mistakes, inside the word
-        elsif ($fuzzy == 6)
+        # Fuzzy method: Extra characters, or other mistakes, inside the word
+        elsif ($fuzzy == 6 || $fuzzy == 10)
         {
             # This is based upon the assumption that the first and last characters
             # are correct, and that all characters that we need are present.
@@ -540,9 +549,13 @@ sub get
             # All non-word characters are removed.
             my @parts = split('',$pattern);
             $pattern = $parts[0].'['.$pattern.']+'.$parts[-1];
+            if ($fuzzy == 6)
+            {
+                $pattern = '^'.$pattern.'$';
+            }
             $regex = qr/$pattern/;
         }
-        # Fuzzy method 4: Correct length, incorrect order
+        # Fuzzy method: Correct length, incorrect order
         elsif ($fuzzy == 7)
         {
             # This is very general, all non-word characters are removed, and
@@ -553,8 +566,8 @@ sub get
             $pattern = '['.$pattern.']{'.length($pattern).'}';
             $regex = qr/$pattern/;
         }
-        # Fuzzy method 5: Acronym detection
-        elsif($fuzzy == 8)
+        # Fuzzy method: Acronym detection
+        elsif($fuzzy == 9)
         {
             # This is about as general as it can get. We assume all characters are
             # present, but that it was added as an acronym. Ie. "example site" could
