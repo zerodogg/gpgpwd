@@ -743,14 +743,14 @@ sub usage
     printHelp('-v','--verbose','Increase verbosity (can be supplied multiple times)');
     printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
-    printHelp('','--fast-git','Enable fast git mode (like git mode, but pulls after getting a password)');
+    printHelp('-i','--fast-git','Enable fast git mode (like git mode, but pulls after getting a password)');
     printHelp('-G','--no-git','Disable git mode (overriding --git and --fast-git)');
-    printHelp('','--no-xclip','Disable copying of passwords to the clipboard when running under X');
+    printHelp('-C','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
     printHelp('-r','--require-agent','Require use of gpg-agent when prompting for passwords. This reduces gpg verbosity');
     printHelp('-R','--no-require-agent','Don\'t require use of gpg-agent when prompting for passwords. This will override --require-agent');
-    printHelp('-T','--try-require-agent','If a gpg-agent is running, require it to be used, otherwise prompt for passwords');
-    printHelp('','--disable-agent','Disable all use of gpg-agent (implies -R)');
+    printHelp('-t','--try-require-agent','If a gpg-agent is running, require it to be used, otherwise prompt for passwords');
+    printHelp('-A','--disable-agent','Disable all use of gpg-agent (implies -R)');
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
     print "\n";
     print "Commands:\n";
@@ -933,14 +933,14 @@ sub main
             $forceUnsafe = true;
         },
         'p|password-file=s' => \$storagePath,
-        'fast-git' => sub {
+        'i|fast-git' => sub {
             $enableGit = 1;
             $fastGitMode = 1;
         },
         'g|git' => \$enableGit,
         'G|no-git' => \$noGit,
         'debuginfo' => \&debugInfo,
-        'no-xclip' => sub { $useXclip = false; },
+        'C|no-xclip' => sub { $useXclip = false; },
         'c|xclip-clipboard=s' => sub
         {
             shift;
@@ -968,7 +968,7 @@ sub main
         },
         'r|require-agent' => \$requireAgent,
         'R|no-require-agent' => \$noRequireAgent,
-        'T|try-require-agent' => sub
+        'T|t|try-require-agent' => sub
         {
             if ($ENV{GPG_AGENT_INFO})
             {
@@ -1275,7 +1275,7 @@ specified. This can be useful if you have a shell alias that adds --git to
 the default gpgpwd parameters, but you want to operate on a different
 --password-file that is not in git.
 
-=item B<--no-xclip>
+=item B<-C, --no-xclip>
 
 Disables use of xclip(1). By default gpgpwd will copy passwords to the clipboard
 for easy pasting into password fields. When this option is supplied it supresses
@@ -1318,13 +1318,13 @@ better, but sometimes have to use gpgpwd when an agent is unavailable. Ie.
 if you have a shell alias that adds --require-agent to the default gpgpwd
 parameters, you can use -R to override that.
 
-=item B<-T, --try-require-agent>
+=item B<-t, --try-require-agent>
 
 If a gpg-agent is running (if the GPG_AGENT_INFO environment variable is set)
 this acts like --require-agent, if it is not then this acts as
 --disable-agent.
 
-=item B<--disable-agent>
+=item B<-A, --disable-agent>
 
 Disables all use of gpg-agent. This option implies --no-require-agent.
 

@@ -5,6 +5,7 @@ Version 0.3
     by pulling after getting a password (and then re-getting
     it if the file changed)
 - Added a 'rename' command
+- Added short versions of several parameters
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
