@@ -148,12 +148,23 @@ sub randomPwd
     my $length = shift;
     $length //= 15;
     my $pwd = '';
-    # These characters are chosen specifically because they are usually selectable in
-    # a terminal by simply double-clicking on the string.
-    my @chars = ('a'..'z','A'..'Z',0..9,',','.','/','?','%','&','#',':','_','=','+','@','~');
-    while(length($pwd) < $length)
+    while(1)
     {
-        $pwd .= $chars[ rand scalar @chars ];
+        # These characters are chosen specifically because they are usually selectable in
+        # a terminal by simply double-clicking on the string.
+        my @chars = ('a'..'z','A'..'Z',0..9,',','.','/','?','%','&','#',':','_','=','+','@','~');
+        while(length($pwd) < $length)
+        {
+            $pwd .= $chars[ rand scalar @chars ];
+        }
+        # Require a password to have at least one number, one lower- and one
+        # upper-case character, and one non-word (symbol) character
+        if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && $pwd =~ /\W/)
+        {
+            last;
+        }
+        # Password not accepted, so reset and try again
+        $pwd = '';
     }
     return $pwd;
 }
