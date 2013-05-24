@@ -462,6 +462,48 @@ sub set
     $data->{pwds}->{$name} = $password;
 }
 
+# Purpose: Get a fuzzy regexp for simple typos or missing characters
+sub getTypoOrMissingRegex
+{
+    my $pattern = shift;
+    my $fuzzyness = shift;
+
+    # This is done by first removing any 'non-word' character.
+    # Then each part is split into a regex that accepts the
+    # current, previous and next character in the word, as well as $fuzzyness
+    # characters after this one, which can be anything.
+    # 
+    # Ie. the $name 'test', and $fuzzy=1 will become:
+    # [te][tes][est][st]
+    # 
+    # Whereas $fuzzy=4 will become:
+    # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
+    my @parts = split('',$pattern);
+    $pattern = '';
+    my $prev = '';
+    my $fuzzyNo = $fuzzyness;
+    my $fuzzyString = '';
+    while($fuzzyNo--)
+    {
+        $fuzzyString .= '.?';
+    }
+    for(my $i = 0; $i < @parts; $i++)
+    {
+        my $part ='';
+        if ($i != 0)
+        {
+            $part .= $parts[$i-1];
+        }
+        $part .= $parts[$i];
+        if ( defined $parts[$i+1])
+        {
+            $part .= $parts[$i+1];
+        }
+        $pattern .= '['.$part.']'.$fuzzyString;
+    }
+    return (qr/$pattern/i,$pattern);
+}
+
 # Purpose: Get passwords from the database and output them to the user
 # Usage: get($data,NAME);
 # $data is the data hashref
@@ -513,46 +555,44 @@ sub get
             }
             $regex = qr/$pattern/i;
         }
-        # Fuzzy method: Simple typos or missing characters
-        elsif ($fuzzy < 6)
+        # Fuzzy method 2: Simple typos or missing characters
+        elsif ($fuzzy == 2)
         {
-            # This is done by first removing any 'non-word' character.
-            # Then each part is split into a regex that accepts the
-            # current, previous and next character in the word, as well as $fuzzy-1
-            # characters after this one, which can be anything.
-            # 
-            # Ie. the $name 'test', and $fuzzy=1 will become:
-            # [te][tes][est][st]
-            # 
-            # Whereas $fuzzy=4 will become:
-            # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
-            my @parts = split('',$pattern);
-            $pattern = '';
-            my $prev = '';
-            my $fuzzyNo = $fuzzy-1;
-            my $fuzzyString = '';
-            while($fuzzyNo--)
-            {
-                $fuzzyString .= '.?';
-            }
-            for(my $i = 0; $i < @parts; $i++)
-            {
-                my $part ='';
-                if ($i != 0)
-                {
-                    $part .= $parts[$i-1];
-                }
-                $part .= $parts[$i];
-                if ( defined $parts[$i+1])
-                {
-                    $part .= $parts[$i+1];
-                }
-                $pattern .= '['.$part.']'.$fuzzyString;
-            }
-            $regex = qr/$pattern/i;
+            ($regex,$pattern) = getTypoOrMissingRegex($pattern,1);
         }
-        # Fuzzy method: Extra characters, or other mistakes, inside the word
-        elsif ($fuzzy == 6 || $fuzzy == 10)
+        # Extra characters, or other mistakes, inside the word, but approx.
+        # the correct length
+        elsif($fuzzy == 3)
+        {
+            # This is based upon the assumption that the first and last
+            # characters are correct, and that all characters that we need are
+            # present. Additionally it assumes that the length is approximately
+            # correct
+            #
+            # All non-word characters are removed.
+            my @parts = split('',$pattern);
+            my $minLength = scalar(@parts)-3;
+            my $maxLength = scalar(@parts)+1;
+            $pattern = $parts[0].'['.$pattern.']{'.$minLength.','.$maxLength.'}'.$parts[-1];
+            $regex = qr/$pattern/;
+        }
+        # Simple typos or missing characters
+        elsif ($fuzzy == 4)
+        {
+            ($regex,$pattern) = getTypoOrMissingRegex($pattern,2);
+        }
+        # Simple typos or missing characters
+        elsif ($fuzzy == 5)
+        {
+            ($regex,$pattern) = getTypoOrMissingRegex($pattern,3);
+        }
+        # Simple typos or missing characters
+        elsif ($fuzzy == 6)
+        {
+            ($regex,$pattern) = getTypoOrMissingRegex($pattern,4);
+        }
+        # Extra characters, or other mistakes, inside the word
+        elsif ($fuzzy == 7 || $fuzzy == 11)
         {
             # This is based upon the assumption that the first and last characters
             # are correct, and that all characters that we need are present.
@@ -566,8 +606,8 @@ sub get
             }
             $regex = qr/$pattern/;
         }
-        # Fuzzy method: Correct length, incorrect order
-        elsif ($fuzzy == 7)
+        # Correct length, incorrect order
+        elsif ($fuzzy == 9)
         {
             # This is very general, all non-word characters are removed, and
             # we construct a character class consisting of all of the remaining
@@ -578,7 +618,7 @@ sub get
             $regex = qr/$pattern/;
         }
         # Fuzzy method: Acronym detection
-        elsif($fuzzy == 9)
+        elsif($fuzzy == 10)
         {
             # This is about as general as it can get. We assume all characters are
             # present, but that it was added as an acronym. Ie. "example site" could
