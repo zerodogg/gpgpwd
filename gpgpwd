@@ -745,47 +745,49 @@ sub git
     my $cwd = getcwd;
     chdir(dirname($path));
 
-    given($command)
+    if ($command eq 'safepull')
     {
-        when('safepull')
+        if (
+            (defined $ENV{SSH_AGENT_PID}) ||
+            (defined $ENV{GNOME_KEYRING_PID} && defined $ENV{SSH_AUTH_SOCK})
+        )
         {
-            if ($ENV{SSH_AGENT_PID})
+            $command = 'pull';
+        }
+        else
+        {
+            $command = 'noop';
+            printv(V_INFO,'Not pulling since SSH_AGENT_PID is not set, and neither is GNOME_KEYRING_PID and SSH_AUTH_SOCK'."\n");
+        }
+    }
+    if($command eq 'pull')
+    {
+        if ($fastGitMode)
+        {
+            print "\n(git): ";
+        }
+        elsif (!$fastGitMode)
+        {
+            print 'Pulling git repository...'."\n";
+        }
+        if (psystem('git','pull','--rebase','--quiet') != 0)
+        {
+            if(psystem('git','pull','--quiet') != 0)
             {
-                $_ = 'pull';
-                continue;
-            }
-            else
-            {
-                printv(V_INFO,'Not pulling since there is no SSH_AGENT_PID environment variable'."\n");
+                pDie('Failed to git pull, you must manually resolve the conflict'."\n");
             }
         }
-
-        when('pull')
-        {
-            if ($fastGitMode)
-            {
-                print "\n(git): ";
-            }
-            elsif (!$fastGitMode)
-            {
-                print 'Pulling git repository...'."\n";
-            }
-            if (psystem('git','pull','--rebase','--quiet') != 0)
-            {
-                if(psystem('git','pull','--quiet') != 0)
-                {
-                    pDie('Failed to git pull, you must manually resolve the conflict'."\n");
-                }
-            }
-        }
-
-        when('push')
-        {
-            print 'Pushing git repository...'."\n";
-            psystem('git','add',basename($path));
-            psystem('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
-            psystem('git','push','--quiet');
-        }
+    }
+    elsif($command eq 'push')
+    {
+        print 'Pushing git repository...'."\n";
+        psystem('git','add',basename($path));
+        psystem('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
+        psystem('git','push','--quiet');
+    }
+    elsif($command ne 'noop')
+    {
+        printv(V_INFO,'WARNING: Unknown command "'.$command.'" in git()'."\n");
     }
 
     chdir($cwd);
@@ -1010,24 +1012,21 @@ sub main
             shift;
             my $value = shift;
 
-            given($value)
+            if ($value eq 'both')
             {
-                when('both')
-                {
-                    @clipboardTargets = qw(primary clipboard);
-                }
-                when('clipboard')
-                {
-                    @clipboardTargets = qw(clipboard);
-                }
-                when('selection')
-                {
-                    @clipboardTargets = qw(primary);
-                }
-                default
-                {
-                    pDie('Unknown value for --xclip-cilpboard: '.$value."\n");
-                }
+                @clipboardTargets = qw(primary clipboard);
+            }
+            elsif($value eq 'clipboard')
+            {
+                @clipboardTargets = qw(clipboard);
+            }
+            elsif($value eq 'selection')
+            {
+                @clipboardTargets = qw(primary);
+            }
+            else
+            {
+                pDie('Unknown value for --xclip-cilpboard: '.$value."\n");
             }
         },
         'r|require-agent' => \$requireAgent,
@@ -1119,149 +1118,136 @@ sub main
         $fastGitMode = false;
     }
 
-    given($command)
+    if ($command eq 'get')
     {
-        when('get')
+        my $fileID = getFileID($storagePath);
+        if(! @ARGV)
         {
-            my $fileID = getFileID($storagePath);
-            if(! @ARGV)
-            {
-                warn('Missing parameter to get: what to retrieve'."\n");
-                usage(103);
-            }
-            elsif(@ARGV != 1)
-            {
-                pDie('Too many parameters for "get"'."\n");
-            }
-
-            if (!$fastGitMode)
-            {
-                git('safepull',$storagePath);
-            }
-            my $data = loadData($storagePath);
-            get($data,@ARGV);
-
-            if ($fastGitMode)
-            {
-                git('safepull',$storagePath);
-                # If the file has changed due to the pull, then we re-fetch
-                if ($fileID ne getFileID($storagePath))
-                {
-                    print "\n";
-                    print "File updated by git, re-reading passwords:\n";
-                    my $data = loadData($storagePath);
-                    get($data,@ARGV);
-                }
-            }
+            warn('Missing parameter to get: what to retrieve'."\n");
+            usage(103);
+        }
+        elsif(@ARGV != 1)
+        {
+            pDie('Too many parameters for "get"'."\n");
         }
 
-        when('batchadd')
+        if (!$fastGitMode)
         {
-            if (!@ARGV)
-            {
-                warn('Missing parameter to batchadd: path to the file to read'."\n");
-                usage(104);
-            }
-            elsif(@ARGV != 1)
-            {
-                pDie('Too many parameters for "batchadd"'."\n");
-            }
-            git('pull',$storagePath);
-            my $data = loadData($storagePath);
-            loadFromFile(shift(@ARGV),$data);
-            writeData($storagePath,$data);
+            git('safepull',$storagePath);
         }
+        my $data = loadData($storagePath);
+        get($data,@ARGV);
 
-        when('remove')
+        if ($fastGitMode)
         {
-            if (!@ARGV)
+            git('safepull',$storagePath);
+            # If the file has changed due to the pull, then we re-fetch
+            if ($fileID ne getFileID($storagePath))
             {
-                warn('Missing parameter to remove: what to remove'."\n");
-                usage(104);
+                print "\n";
+                print "File updated by git, re-reading passwords:\n";
+                my $data = loadData($storagePath);
+                get($data,@ARGV);
             }
-            elsif(@ARGV != 1)
-            {
-                pDie('Too many parameters for "remove"'."\n");
-            }
-            my $name = shift(@ARGV);
-
-            git('pull',$storagePath);
-            my $data = loadData($storagePath);
-            if ($data->{pwds}->{$name})
-            {
-                print 'Removed '.$name.' (with the password '.$data->{pwds}->{$name}.')'."\n";
-                delete($data->{pwds}->{$name});
-            }
-            else
-            {
-                print 'No entry named '.$name.' found. Doing nothing.'."\n";
-                pExit(0);
-            }
-            writeData($storagePath,$data);
         }
-
-        when('add')
+    }
+    elsif($command eq 'batchadd')
+    {
+        if (!@ARGV)
         {
-            $_ = 'set';
-            continue;
+            warn('Missing parameter to batchadd: path to the file to read'."\n");
+            usage(104);
         }
-
-        when('set')
+        elsif(@ARGV != 1)
         {
-            if (!@ARGV)
-            {
-                warn('Missing parameter to set: what to set'."\n");
-                usage(104);
-            }
-            elsif(@ARGV != 1)
-            {
-                pDie('Too many parameters for "set" (note that you will be prompted for a password)'."\n");
-            }
-            git('pull',$storagePath);
-            my $data = loadData($storagePath);
-            set($data,@ARGV);
-            writeData($storagePath,$data);
+            pDie('Too many parameters for "batchadd"'."\n");
         }
-
-        when('rename')
+        git('pull',$storagePath);
+        my $data = loadData($storagePath);
+        loadFromFile(shift(@ARGV),$data);
+        writeData($storagePath,$data);
+    }
+    elsif($command eq 'remove')
+    {
+        if (!@ARGV)
         {
-            my $old = shift(@ARGV);
-            my $new = shift(@ARGV);
-            if (!defined $old)
-            {
-                warn('Missing parameters to rename: old name, new name'."\n");
-                usage(104);
-            }
-            elsif (!defined $new)
-            {
-                warn('Missing parameters to rename: new name'."\n");
-                usage(104);
-            }
-            elsif(@ARGV != 0)
-            {
-                pDie('Too many parameters for "rename"'."\n");
-            }
-            git('pull',$storagePath);
-            my $data = loadData($storagePath);
-
-            my $entry = $data->{pwds}->{$old};
-            if (!defined $entry)
-            {
-                pDie('Failed to find "'.$old.'". Note that you must specify the exact name when'."\n".'using "rename", as it does no fuzzy searching'."\n");
-            }
-            $data->{pwds}->{$new} = $entry;
-            delete($data->{pwds}->{$old});
-
-            print 'Renamed the entry for '.$old.' to '.$new."\n";
-
-            writeData($storagePath,$data);
+            warn('Missing parameter to remove: what to remove'."\n");
+            usage(104);
         }
-
-        default
+        elsif(@ARGV != 1)
         {
-            warn "Unknown command: $command\n";
-            usage(102);
+            pDie('Too many parameters for "remove"'."\n");
         }
+        my $name = shift(@ARGV);
+
+        git('pull',$storagePath);
+        my $data = loadData($storagePath);
+        if ($data->{pwds}->{$name})
+        {
+            print 'Removed '.$name.' (with the password '.$data->{pwds}->{$name}.')'."\n";
+            delete($data->{pwds}->{$name});
+        }
+        else
+        {
+            print 'No entry named '.$name.' found. Doing nothing.'."\n";
+            pExit(0);
+        }
+        writeData($storagePath,$data);
+    }
+    elsif($command eq 'set' || $command eq 'set')
+    {
+        if (!@ARGV)
+        {
+            warn('Missing parameter to set: what to set'."\n");
+            usage(104);
+        }
+        elsif(@ARGV != 1)
+        {
+            pDie('Too many parameters for "set" (note that you will be prompted for a password)'."\n");
+        }
+        git('pull',$storagePath);
+        my $data = loadData($storagePath);
+        set($data,@ARGV);
+        writeData($storagePath,$data);
+    }
+    elsif($command eq 'rename')
+    {
+        my $old = shift(@ARGV);
+        my $new = shift(@ARGV);
+        if (!defined $old)
+        {
+            warn('Missing parameters to rename: old name, new name'."\n");
+            usage(104);
+        }
+        elsif (!defined $new)
+        {
+            warn('Missing parameters to rename: new name'."\n");
+            usage(104);
+        }
+        elsif(@ARGV != 0)
+        {
+            pDie('Too many parameters for "rename"'."\n");
+        }
+        git('pull',$storagePath);
+        my $data = loadData($storagePath);
+
+        my $entry = $data->{pwds}->{$old};
+        if (!defined $entry)
+        {
+            pDie('Failed to find "'.$old.'". Note that you must specify the exact name when'."\n".'using "rename", as it does no fuzzy searching'."\n");
+        }
+        $data->{pwds}->{$new} = $entry;
+        delete($data->{pwds}->{$old});
+
+        print 'Renamed the entry for '.$old.' to '.$new."\n";
+
+        writeData($storagePath,$data);
+    }
+    else
+    {
+
+        warn "Unknown command: $command\n";
+        usage(102);
     }
     pExit(0);
 }

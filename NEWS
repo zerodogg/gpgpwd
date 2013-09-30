@@ -7,6 +7,7 @@ Version 0.3
 - Added a 'rename' command
 - Added short versions of several parameters
 - Improved fuzzy searching
+- Removed use of given/when as it is marked as experimental again in perl 5.18
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
