@@ -1302,9 +1302,20 @@ sub main
     }
     else
     {
-
-        warn "Unknown command: $command\n";
-        usage(102);
+        if (@ARGV == 0)
+        {
+            print "$command is an unknown command. Maybe you meant:\n";
+            print basename($0).' get '.$command."\n";
+            print '  or'."\n";
+            print basename($0).' set '.$command."\n";
+            print "\nSee ".basename($0)." --help for more information.\n";
+            exit(103);
+        }
+        else
+        {
+            warn "Unknown command: $command\n";
+            usage(102);
+        }
     }
     pExit(0);
 }
