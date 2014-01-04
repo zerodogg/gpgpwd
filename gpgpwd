@@ -1224,16 +1224,16 @@ sub main
         }
         writeData($storagePath,$data);
     }
-    elsif($command eq 'set' || $command eq 'set')
+    elsif($command eq 'set' || $command eq 'add')
     {
         if (!@ARGV)
         {
-            warn('Missing parameter to set: what to set'."\n");
+            warn('Missing parameter to '.$command.': what to set'."\n");
             usage(104);
         }
         elsif(@ARGV != 1)
         {
-            pDie('Too many parameters for "set" (note that you will be prompted for a password)'."\n");
+            pDie('Too many parameters for "'.$command.'" (note that you will be prompted for a password)'."\n");
         }
         git('pull',$storagePath);
         my $data = loadData($storagePath);
