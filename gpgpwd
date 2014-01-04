@@ -31,6 +31,7 @@ use constant {
 
     V_INFO => 1,
     V_LOG => 2,
+    V_DEBUG => 3,
 };
 
 my $VERSION          = '0.3';
@@ -58,7 +59,8 @@ sub printv
         my @prefixes;
         $prefixes[V_INFO] = 'info';
         $prefixes[V_LOG]  = 'log';
-        printf('[gpgpwd %-4s] ',$prefixes[$level]);
+        $prefixes[V_DEBUG]  = 'debug';
+        printf('[gpgpwd %-5s] ',$prefixes[$level]);
         print @_;
     }
 }
