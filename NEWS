@@ -8,6 +8,9 @@ Version 0.3
 - Added short versions of several parameters
 - Improved fuzzy searching
 - Removed use of given/when as it is marked as experimental again in perl 5.18
+- Replaced the old result sorting with a new score-based sorting system
+    which should provide more accurate results
+- Added an --all parameter for retrieval of all possible matches
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument
