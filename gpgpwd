@@ -965,7 +965,7 @@ sub debugInfo
     printf($pattern,'git version',getVersionFrom('git','--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent useXclip))
+    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent useXclip allMatches))
     {
         if (! eval('$'.$flag))
         {
