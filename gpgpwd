@@ -516,8 +516,7 @@ sub get
     my $data  = shift;
     my $name  = shift;
     my $fuzzySearch = 0;
-    my $best;
-    my $matches;
+    my $matches = {};
 
     foreach my $fuzzy (0..10)
     {
@@ -644,24 +643,7 @@ sub get
             printv(V_LOG,'Trying fuzzy regex ('.$fuzzy.'): '.$pattern."\n");
         }
 
-        my $previousBest;
-        if ($best && $matches)
-        {
-            $previousBest = {
-                best => $best,
-                matches => $matches,
-            };
-        }
-        ($matches,$best) = getMatches($data,$regex,$name);
-        if ($previousBest)
-        {
-            $best = $previousBest->{best};
-            foreach my $current (keys %{$matches})
-            {
-                $previousBest->{matches}->{$current} = $matches->{$current};
-            }
-            $matches = $previousBest->{matches};
-        }
+        getMatches($matches,$data,$regex,$name,$fuzzy);
 
         if ($allMatches)
         {
@@ -700,40 +682,57 @@ sub get
     }
     print "\n";
 
-    foreach my $entry (sort keys %{$matches})
+    my $entries = scalar(keys(%{ $matches }));
+    my $entryNo = 0;
+    foreach my $entry (sort { $matches->{$b}->{score} <=> $matches->{$a}->{score} } keys %{$matches})
     {
-        next if $entry eq $best;
-        outputEntry($entry,$matches->{$entry},0);
+        $entryNo++;
+        outputEntry($entry,$matches->{$entry}, $entryNo == $entries);
     }
-    outputEntry($best,$matches->{$best},true);
 }
 
 # Purpose: Get data entries that match a given regex
-# Usage: ($matches,$best) = getMatches($data,$regex,$name);
+# Usage: $matches = getMatches($data,$regex,$name);
 sub getMatches
 {
+    my $matches = shift;
     my $data = shift;
     my $regex = shift;
     my $name = shift;
-    my $last;
-    my $best;
-
-    my %matches;
+    my $score = shift;
+    my $searchLength = length($name);
 
     foreach my $key (sort keys %{$data->{pwds}})
     {
+        next if defined $matches->{$key};
         if ($key =~ $regex)
         {
-            $last = $key;
-            $matches{$key} = $data->{pwds}->{$key};
+            my $entryScore = $score;
             if ($key eq $name)
             {
-                $best = $key;
+                $entryScore--;
             }
+            else
+            {
+                # Add a 0.5 penalty for each character above the search string length
+                # IF the $name is only alphanumeric
+                if ($name !~ /\W/)
+                {
+                    my $keyLen = length($key);
+                    if ($keyLen > $searchLength)
+                    {
+                        printv(V_DEBUG,'Penalizing '.$key.' due to its length'."\n");
+                        $entryScore += ($keyLen-$searchLength)*0.5;
+                    }
+                }
+            }
+            $matches->{$key} = {
+                password => $data->{pwds}->{$key},
+                score => $entryScore,
+            };
         }
     }
-    $best //= $last;
-    return(\%matches,$best);
+    return $matches;
 }
 
 # Purpose: Output a password
@@ -744,14 +743,16 @@ sub getMatches
 sub outputEntry
 {
     my $key = shift;
-    my $value = shift;
+    my $content = shift;
     my $copy = shift;
     my $copied = '';
+    my $value = $content->{password};
     if ($copy)
     {
         $copied = toClipboard($value,true);
     }
 
+    printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
     printf('%-20s: %s'."\n",$key,$value.$copied);
 }
 
