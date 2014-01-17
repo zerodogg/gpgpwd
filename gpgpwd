@@ -705,6 +705,7 @@ sub getMatches
     my $score = shift;
     my $grantsStartEndBonus = shift;
     my $searchLength = length($name);
+    my $fuzzyNo = $score;
 
     foreach my $key (sort keys %{$data->{pwds}})
     {
@@ -714,7 +715,7 @@ sub getMatches
             my $entryScore = $score;
             if ($key eq $name)
             {
-                $entryScore -= 4;
+                $entryScore -= 5;
             }
             else
             {
@@ -730,14 +731,36 @@ sub getMatches
                         $entryScore += ($keyLen-$searchLength)*0.25;
                     }
                 }
-                # Grant a -1 bonus if the regex matched at the beginning or end, if
+                # Grant a bonuses if the regex matched at the beginning or end, if
                 # requested
-                if($grantsStartEndBonus && (
-                        $key =~ /^$regex/ || $key =~ /$regex$/
-                    ))
+                if ($grantsStartEndBonus)
                 {
-                    printv(V_DEBUG,'Granting a -1 bonus to '.$key.' due to start/end match');
-                    $entryScore += -1;
+                    my ($bonus,$reason);
+                    # Grant a -3 bonus for matching the regex at the start of
+                    # the string followed by a non-word character and the fuzzy
+                    # method in use is 0
+                    if ($fuzzyNo == 0 && $key =~ /^$regex\S/)
+                    {
+                        $bonus = -3;
+                        $reason = 'start-nonword';
+                    }
+                    # Grant a -2 bonus for matching the regex at the start of the string
+                    elsif ($key =~ /^$regex/)
+                    {
+                        $bonus = -2;
+                        $reason = 'start';
+                    }
+                    # Grant a -1 bonus for matching the regex at the end of the string
+                    elsif($key =~ /$regex$/)
+                    {
+                        $bonus = -1;
+                        $reason = 'end';
+                    }
+                    if ($reason)
+                    {
+                        printv(V_DEBUG,'Granting a '.$bonus.' bonus to '.$key.' due to '.$reason.' match'."\n");
+                        $entryScore += $bonus;
+                    }
                 }
             }
             $matches->{$key} = {
