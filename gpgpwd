@@ -725,9 +725,9 @@ sub getMatches
                     my $keyLen = length($key);
                     if ($keyLen > $searchLength)
                     {
-                        my $penalty = ($keyLen-$searchLength)*0.5;
+                        my $penalty = ($keyLen-$searchLength)*0.25;
                         printv(V_DEBUG,'Penalizing '.$key.' '.$penalty.' due to its length'."\n");
-                        $entryScore += ($keyLen-$searchLength)*0.5;
+                        $entryScore += ($keyLen-$searchLength)*0.25;
                     }
                 }
                 # Grant a -1 bonus if the regex matched at the beginning or end, if
