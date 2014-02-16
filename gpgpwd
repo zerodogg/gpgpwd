@@ -1274,7 +1274,7 @@ sub main
         }
         writeData($storagePath,$data);
     }
-    elsif($command eq 'set' || $command eq 'add')
+    elsif($command eq 'set' || $command eq 'add' || $command eq 'change')
     {
         if (!@ARGV)
         {
