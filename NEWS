@@ -12,6 +12,7 @@ Version 0.3
     which should provide more accurate results
 - Added an --all parameter for retrieval of all possible matches
 - Made the output when an invalid command is invoked more friendly
+- Removed some gpg warnings when gpg is symlinked to gpg2
 
 Version 0.2
 - Clarified that 'get' takes a regular expression as its argument

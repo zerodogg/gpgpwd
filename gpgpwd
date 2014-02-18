@@ -1011,6 +1011,14 @@ sub debugInfo
         }
         $flags .= $flag.' ';
     }
+    if ($gpg[0] eq 'gpg2')
+    {
+        $flags .= 'useGPGv2';
+    }
+    else
+    {
+        $flags .= 'useGPGv1';
+    }
     printf($pattern,'flags',$flags);
 
     eval('use Digest::MD5;');
@@ -1041,6 +1049,20 @@ sub main
     if (!InPath('gpg') && !InPath('gpg2'))
     {
         pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
+    }
+    elsif (
+            # If we don't have gpg(1) then we need to use gpg2
+            !InPath('gpg')
+            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
+            # if it is then enable gpg2-mode
+            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
+        )
+    {
+        # Note: If gpg isn't installed then we *know* gpg2 is installed,
+        # because if neither is installed we refuse to run at all (test at the
+        # top of main() )
+        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
+        $gpg[0] = 'gpg2';
     }
 
     if (@ARGV == 0)
@@ -1124,6 +1146,10 @@ sub main
         },
         'disable-agent' => sub {
             $useGpgAgent = false;
+            if ($gpg[0] eq 'gpg2')
+            {
+                pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
+            }
         },
         'all' => \$allMatches,
     ) or pDie('See --help for more information'."\n");
@@ -1133,19 +1159,6 @@ sub main
     if (!$command)
     {
         usage(0);
-    }
-
-    if (!InPath('gpg'))
-    {
-        # Note: If gpg isn't installed then we *know* gpg2 is installed,
-        # because if neither is installed we refuse to run at all (test at the
-        # top of main() )
-        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
-        $gpg[0] = 'gpg2';
-        if (! $useGpgAgent)
-        {
-            pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
-        }
     }
 
     # Verify that we're able to read and write to $storagePath, as well as
@@ -1188,7 +1201,10 @@ sub main
     else
     {
         $requireAgent = false;
-        push(@gpg,'--no-use-agent');
+        if ($gpg[0] ne 'gpg2')
+        {
+            push(@gpg,'--no-use-agent');
+        }
     }
 
     # Disable --git if --no-git was supplied
