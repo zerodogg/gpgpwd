@@ -35,7 +35,7 @@ use constant {
 };
 
 my $VERSION          = '0.3';
-my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences zlib);
+my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 1;
 my $enableGit        = false;
