@@ -1,3 +1,11 @@
+Version 0.4
+- Added a cryptographic signature to the password database to allow
+    gpgpwd to detect tampering.
+- Added a second layer of encryption where each password is encrypted
+    individually in addition to the existing encryption of the
+    database as a whole. This protects against attacks on the
+    in-memory decrypted password database.
+
 Version 0.3
 - Added --try-require-agent, acts like --require-agent if an agent
     is available, and like --no-require-agent if it isn't
