@@ -692,7 +692,7 @@ sub writeData
 {
     my $path    = shift;
     my $content = shift;
-    
+
     my $encoded;
 
     $content->{generator} = 'gpgpwd '.$VERSION.' - http://random.zerodogg.org/gpgpwd';
@@ -777,7 +777,7 @@ sub loadFromFile
 
         my $name = $_;
         my $pwd = $_;
-        
+
         $name =~ s/^(\S+)\s+.*/$1/;
         $pwd =~ s/^\S+\s+//;
 
