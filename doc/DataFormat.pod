@@ -1,0 +1,87 @@
+=head1 gpgpwd data format specification
+
+This file specifies the gpgpwd data format, revision 2, as implemented by
+gpgpwd.
+
+=head1 OVERVIEW
+
+=over
+
+=item Inner content: a JSON datastructure.
+
+=item Outer content: gpg signature around the JSON datastructure
+
+=item Outer container: the gpg-signed JSON dump with binary gpg encryption
+
+=back
+
+=head1 JSON DATA STRUCTURE
+
+=head2 On-disk format
+
+The JSON datastructure contains a set of keys, and a "pwds" structure.  The
+JSON dump has had a newline added at each comma to avoid too long lines (which
+gpg doesn't like for text signatures). All newlines should be stripped before
+parsing the JSON.
+
+=over
+
+=item lastVersion
+
+Contains the version number of the gpgpwd version that wrote the file
+
+=item gpgpwdDataVersion
+
+Contains the version number of the gpgpwd data format. Will be "2" for the
+format specified in this file.
+
+=item generator
+
+Contains an arbitrary "generator" string with whatever program wrote the file.
+gpgpwd writes the application name, version and URL in this field.
+
+=item pwds
+
+This is a key->value structure. Each key is the name of the website stored,
+and the value is a base64-encoded gpg-encrypted password.
+
+=back
+
+=head2 Signature
+
+The JSON dump is signed by gpg, using the same key that will later be used to
+encrypt the data. Before a JSON parser can parse the JSON dump this will need
+to be stripped away.
+
+=head2 Encrypted dump
+
+Finally, the gpg-signed JSON dump is stored as a binary encrypted file through
+gpg.
+
+=head1 EXAMPLE
+
+    -----BEGIN PGP SIGNED MESSAGE-----
+    Hash: SHA1
+
+    {"lastVersion":"0.4",
+    "pwds":{"guildwars2":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."}
+    "gpgpwdDataVersion":"2",
+    "generator":"gpgpwd 0.4 - http://random.zerodogg.org/gpgpwd"}
+    -----BEGIN PGP SIGNATURE-----
+    Version: GnuPG v2.0.22 (GNU/Linux)
+    Comment: gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d
+
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXX
+    XXXXX
+    -----END PGP SIGNATURE-----
