@@ -649,6 +649,12 @@ sub loadData
             print "\b";
         }
         print "\r                          \r";
+        if ($enableGit)
+        {
+            print "First performing a git pull... ";
+            git('pull',$storagePath);
+            print "\n";
+        }
         print 'Converting ...';
         # Perform data conversion. Encrypts every password explicitly.
         foreach my $pwd (keys %{$data->{pwds}})
