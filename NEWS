@@ -5,6 +5,7 @@ Version 0.4
     individually in addition to the existing encryption of the
     database as a whole. This protects against attacks on the
     in-memory decrypted password database.
+- Replaced the slower --git mode with the one used by --fast-git
 
 Version 0.3
 - Added --try-require-agent, acts like --require-agent if an agent

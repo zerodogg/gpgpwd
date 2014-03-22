@@ -45,7 +45,6 @@ my $dataVersion      = 2;
 my $enableGit        = false;
 my $forceUnsafe      = false;
 my $requireAgent     = false;
-my $fastGitMode      = false;
 my $useXclip         = true;
 my $useGpgAgent      = true;
 my $verbosity        = 0;
@@ -1215,14 +1214,7 @@ sub git
     }
     if($command eq 'pull')
     {
-        if ($fastGitMode)
-        {
-            print "\n(git): ";
-        }
-        elsif (!$fastGitMode)
-        {
-            print 'Pulling git repository...'."\n";
-        }
+        print "\n(git): ";
         if (psystem('git','pull','--rebase','--quiet') != 0)
         {
             if(psystem('git','pull','--quiet') != 0)
@@ -1262,8 +1254,7 @@ sub usage
     printHelp('-v','--verbose','Increase verbosity (can be supplied multiple times)');
     printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
     printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
-    printHelp('-i','--fast-git','Enable fast git mode (like git mode, but pulls after getting a password)');
-    printHelp('-G','--no-git','Disable git mode (overriding --git and --fast-git)');
+    printHelp('-G','--no-git','Disable git mode (overriding --git)');
     printHelp('-C','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
     printHelp('-A','--disable-agent','Disable all use of gpg-agent (implies -R)');
@@ -1453,11 +1444,7 @@ sub main
             $forceUnsafe = true;
         },
         'p|password-file=s' => \$storagePath,
-        'i|fast-git' => sub {
-            $enableGit = 1;
-            $fastGitMode = 1;
-        },
-        'g|git' => \$enableGit,
+        'g|git|i|fast-git' => \$enableGit,
         'G|no-git' => \$noGit,
         'debuginfo' => \&debugInfo,
         'C|no-xclip' => sub { $useXclip = false; },
@@ -1597,7 +1584,6 @@ sub main
     if ($noGit)
     {
         $enableGit   = false;
-        $fastGitMode = false;
     }
 
     if ($command eq 'get')
@@ -1613,14 +1599,10 @@ sub main
             pDie('Too many parameters for "get"'."\n");
         }
 
-        if (!$fastGitMode)
-        {
-            git('safepull',$storagePath);
-        }
         my $data = loadData($storagePath);
         get($data,@ARGV);
 
-        if ($fastGitMode)
+        if ($enableGit)
         {
             git('safepull',$storagePath);
             # If the file has changed due to the pull, then we re-fetch
@@ -1797,19 +1779,13 @@ will be used.
 
 =item B<-g, --git>
 
-Enables git(1) mode. This causes gpgpwd to I<git pull> before it writes any
-change to the file, and I<git commit> and I<git push> after a change has been
-made (it will also pull in read mode, but only if it detects a running ssh-agent).
-This can be used to keep a password database in sync between several different
-computers.
-
-=item B<--fast-git>
-
-Enables fast git(1) mode. This is identical to I<--git> mode except for when
-gpgpwd is in read ("get") mode. In read mode it will pull B<after> getting a
-password instead of before, giving you faster access to your passwords. If it
-detects that the password file has changed after pulling, gpgpwd will process
-your get request again, in case the password you wanted has changed.
+Enables git(1) mode. This can be used to keep a password database in sync
+between several different computers.  This causes gpgpwd to I<git pull> before
+it writes any change to the file, and I<git commit> and I<git push> after a
+change has been made. In read mode it will I<git pull> after getting a
+password, if it detects that the password file has changed after pulling,
+gpgpwd will process your get request again, in case the password you wanted has
+changed.
 
 =item B<-G, --no-git>
 
