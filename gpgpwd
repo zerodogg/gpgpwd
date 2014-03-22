@@ -1260,7 +1260,6 @@ sub usage
     printHelp('-G','--no-git','Disable git mode (overriding --git and --fast-git)');
     printHelp('-C','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
-    printHelp('-t','--try-require-agent','If a gpg-agent is running, use it (will be default in 0.4)');
     printHelp('-A','--disable-agent','Disable all use of gpg-agent (implies -R)');
     printHelp('','--all','Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
@@ -1425,25 +1424,6 @@ sub main
     my $noRequireAgent = false;
     my $noGit = false;
 
-    if (!InPath('gpg') && !InPath('gpg2'))
-    {
-        pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
-    }
-    elsif (
-            # If we don't have gpg(1) then we need to use gpg2
-            !InPath('gpg')
-            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
-            # if it is then enable gpg2-mode
-            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
-        )
-    {
-        # Note: If gpg isn't installed then we *know* gpg2 is installed,
-        # because if neither is installed we refuse to run at all (test at the
-        # top of main() )
-        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
-        $gpg[0] = 'gpg2';
-    }
-
     if (@ARGV == 0)
     {
         usage(0);
@@ -1499,36 +1479,18 @@ sub main
         },
         'r|require-agent' => sub
         {
-            print 'Note: --require-agent is deprecated as of version 0.3. You should use'."\n";
-            print '      --try-require-agent instead (--require-agent will be an alias for'."\n";
-            print '      --try-require-agent and be enabled by default in 0.4)'."\n";
-            $requireAgent = 1;
+            print 'Note: --require-agent is a no-op as of version 0.4'."\n";
         },
         'R|no-require-agent' => sub
         {
-            print 'Note: --no-require-agent is deprecated as of version 0.3. You should use'."\n";
-            print '      --try-require-agent or --disable-agent instead. --no-require-agent'."\n";
-            print '      will be removed in 0.4'."\n";
-            $noRequireAgent = 1;
+            print 'Note: --no-require-agent is a no-op as of version 0.4'."\n";
         },
         'T|t|try-require-agent' => sub
         {
-            if ($ENV{GPG_AGENT_INFO})
-            {
-                $requireAgent = true;
-            }
-            else
-            {
-                $noRequireAgent = true;
-                $useGpgAgent = false;
-            }
+            print 'Note: --try-require-agent is the default as of version 0.4'."\n";
         },
         'disable-agent' => sub {
             $useGpgAgent = false;
-            if ($gpg[0] eq 'gpg2')
-            {
-                pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
-            }
         },
         'all' => \$allMatches,
     ) or pDie('See --help for more information'."\n");
@@ -1538,6 +1500,29 @@ sub main
     if (!$command)
     {
         usage(0);
+    }
+
+    if (!InPath('gpg') && !InPath('gpg2'))
+    {
+        pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
+    }
+    elsif (
+            # If we don't have gpg(1) then we need to use gpg2
+            !InPath('gpg')
+            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
+            # if it is then enable gpg2-mode
+            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
+        )
+    {
+        # Note: If gpg isn't installed then we *know* gpg2 is installed,
+        # because if neither is installed we refuse to run at all (test at the
+        # top of main() )
+        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
+        $gpg[0] = 'gpg2';
+        if (!$useGpgAgent)
+        {
+            pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
+        }
     }
 
     # Verify that we're able to read and write to $storagePath, as well as
@@ -1562,16 +1547,32 @@ sub main
         }
     }
 
-    # Unset requireAgent if --no-require-agent or --disable-agent  was specified.
+    if ($ENV{GPG_AGENT_INFO} && $useGpgAgent)
+    {
+        $requireAgent = true;
+        my @GPGInfo = split(':',$ENV{GPG_AGENT_INFO});
+        if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
+        {
+            $requireAgent = true;
+            # Add --no-tty to gpg's parameter list to reduce its output and
+            # require a gpg-agent.
+            push(@gpg,'--no-tty');
+        }
+        else
+        {
+            delete($ENV{GPG_AGENT_INFO});
+        }
+    }
+    if (!$requireAgent)
+    {
+        $noRequireAgent = true;
+        $useGpgAgent = false;
+    }
+
+    # Unset requireAgent if --disable-agent  was specified.
     if ($noRequireAgent || !$useGpgAgent)
     {
         $requireAgent = false;
-    }
-    # Add --no-tty to gpg's parameter list to reduce its output and
-    # require a gpg-agent.
-    elsif($requireAgent)
-    {
-        push(@gpg,'--no-tty');
     }
     if ($useGpgAgent)
     {
@@ -1839,16 +1840,9 @@ Copy to both the 'normal' and 'selection' clipboards.
 
 =back
 
-=item B<-t, --try-require-agent>
-
-If a gpg-agent is running (if the GPG_AGENT_INFO environment variable is set)
-then gpgpwd will use gpg-agent to prompt for passwords, allowing gpgpwd to reduce
-the verbosity of gpg resulting in a nicer and more compact output from gpgpwd.
-If a gpg-agent isn't running then this will not do anything.
-
 =item B<-A, --disable-agent>
 
-Disables all use of gpg-agent, overriding --try-require-agent.
+Disables all use of gpg-agent.
 
 =item B<--all>
 
