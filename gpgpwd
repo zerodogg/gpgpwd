@@ -136,7 +136,14 @@ sub toClipboard
     }
     if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
     {
-        printv(V_LOG,'Use of xclip disabled: Either not installed, or no DISPLAY set'."\n");
+        if(InPath('xclip'))
+        {
+            printv(V_LOG,'Use of xclip disabled: no DISPLAY set'."\n");
+        }
+        else
+        {
+            printv(V_LOG,'Use of xclip disabled: not installed'."\n");
+        }
         if ($returnString)
         {
             return '';
