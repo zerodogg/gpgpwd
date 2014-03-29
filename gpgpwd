@@ -1400,13 +1400,14 @@ sub debugInfo
     print "gpgpwd version $VERSION\n";
     print "\n";
     my $pattern = "%-28s: %s\n";
-    printf($pattern,'Data file',$storagePath);
-    printf($pattern, 'Data version',$dataVersion);
-    printf($pattern, 'Perl version', sprintf('%vd',$^V));
-    printf($pattern, 'gpg version', getVersionFrom('gpg','--version'));
-    printf($pattern, 'gpg2 version', getVersionFrom('gpg2','--version'));
-    printf($pattern, 'xclip version',getVersionFrom('xclip','-version'));
-    printf($pattern,'git version',getVersionFrom('git','--version'));
+    printf($pattern , 'Data file'         , $storagePath);
+    printf($pattern , 'Data version'      , $dataVersion);
+    printf($pattern , 'Perl version'      , sprintf('%vd', $^V));
+    printf($pattern , 'gpg version'       , getVersionFrom('gpg'       , '--version'));
+    printf($pattern , 'gpg2 version'      , getVersionFrom('gpg2'      , '--version'));
+    printf($pattern , 'gpg-agent version' , getVersionFrom('gpg-agent' , '--version'));
+    printf($pattern , 'xclip version'     , getVersionFrom('xclip'     , '-version'));
+    printf($pattern , 'git version'       , getVersionFrom('git'       , '--version'));
 
     my $flags = '';
     foreach my $flag (qw(enableGit forceUnsafe requireAgent useXclip allMatches))
