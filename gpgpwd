@@ -230,6 +230,7 @@ sub autoInitGPGAgent
             # If we have no gpg-agent then the user will get tired of typing
             # their password fast, so output a message on how to avoid that.
             print "NOTICE: No gpg-agent available. Install gpg-agent to avoid unneccesary\npassword prompts\n";
+            $autoGPGAgent = -1;
         }
     }
     elsif (!defined($autoGPGAgent))
