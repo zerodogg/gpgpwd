@@ -61,9 +61,9 @@ sub printv
     if ($verbosity >= $level)
     {
         my @prefixes;
-        $prefixes[V_INFO] = 'info';
-        $prefixes[V_LOG]  = 'log';
-        $prefixes[V_DEBUG]  = 'debug';
+        $prefixes[V_INFO]  = 'info';
+        $prefixes[V_LOG]   = 'log';
+        $prefixes[V_DEBUG] = 'debug';
         printf('[gpgpwd %-5s] ',$prefixes[$level]);
         print @_;
     }
@@ -113,7 +113,7 @@ sub pExit
 # Usage: InPath(FILE)
 sub InPath
 {
-	foreach (split /:/, $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {	return "$_/@_"; } } return false;
+    foreach (split /:/, $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return false;
 }
 
 # Purpose: Copy a string to the clipboard if possible
@@ -124,7 +124,7 @@ sub InPath
 # was copied to the clipboard.
 sub toClipboard
 {
-    my $value = shift;
+    my $value        = shift;
     my $returnString = shift;
     if (!$useXclip)
     {
@@ -167,8 +167,8 @@ sub toClipboard
 sub randomPwd
 {
     my $length = shift;
-    $length //= 15;
-    my $pwd = '';
+    $length  //= 15;
+    my $pwd    = '';
     while(1)
     {
         # These characters are chosen specifically because they are usually selectable in
@@ -539,7 +539,7 @@ sub loadJSONStructure
         };
     }
 
-    my $preV2 = true;
+    my $preV2  = true;
     my $string = gpgIO(undef,[ '--decrypt',$path ]);
     if (!defined($string))
     {
@@ -553,7 +553,7 @@ sub loadJSONStructure
         $preV2 = false;
         # The JSON string will be stored here
         my $jsonString = '';
-        my $seenStart = false;
+        my $seenStart  = false;
         # Iterate through all lines to parse out the JSON string
         foreach my $l (split(/\n/,$string))
         {
@@ -605,7 +605,7 @@ sub loadJSONStructure
 # $data ref.
 sub loadData
 {
-    my $path = shift;
+    my $path         = shift;
     my($preV2,$data) = loadJSONStructure($path);
 
     my $forceUnsafeMessage = "\n".'Ignoring this error may lead to data loss and corruption.'."\n".
@@ -927,10 +927,10 @@ sub getTypoOrMissingRegex
 # NAME is the regex to search for
 sub get
 {
-    my $data  = shift;
-    my $name  = shift;
+    my $data        = shift;
+    my $name        = shift;
     my $fuzzySearch = 0;
-    my $matches = {};
+    my $matches     = {};
 
     foreach my $fuzzy (0..10)
     {
@@ -1112,14 +1112,14 @@ sub get
 # Usage: $matches = getMatches($data,$regex,$name);
 sub getMatches
 {
-    my $matches = shift;
-    my $data = shift;
-    my $regex = shift;
-    my $name = shift;
-    my $score = shift;
+    my $matches             = shift;
+    my $data                = shift;
+    my $regex               = shift;
+    my $name                = shift;
+    my $score               = shift;
     my $grantsStartEndBonus = shift;
-    my $searchLength = length($name);
-    my $fuzzyNo = $score;
+    my $searchLength        = length($name);
+    my $fuzzyNo             = $score;
 
     foreach my $key (sort keys %{$data->{pwds}})
     {
@@ -1193,10 +1193,10 @@ sub getMatches
 # COPY is a bool, if true it will toClipboard() the VALUE
 sub outputEntry
 {
-    my $key = shift;
+    my $key     = shift;
     my $content = shift;
-    my $copy = shift;
-    my $copied = '';
+    my $copy    = shift;
+    my $copied  = '';
     my $value = gpgDecryptString($content->{password},true);
     if ($copy)
     {
@@ -1309,57 +1309,57 @@ sub usage
 #  Description will be reformatted to fit within a normal terminal
 sub printHelp
 {
-	# The short option
-	my $short = shift,
-	# The long option
-	my $long = shift;
-	# The description
-	my $desc = shift;
-	# The generated description that will be printed in the end
-	my $GeneratedDesc;
-	# The current line of the description
-	my $currdesc = '';
-	# The maximum length any line can be
-	my $maxlen = 80;
-	# The length the options take up
-	my $optionlen = 20;
-	# Check if the short/long are LONGER than optionlen, if so, we need
-	# to do some additional magic to take up only $maxlen.
-	# The +1 here is because we always add a space between them, no matter what
-	if ((length($short) + length($long) + 1) > $optionlen)
-	{
-		$optionlen = length($short) + length($long) + 1;
-	}
-	# Split the description into lines
-	foreach my $part (split(/ /,$desc))
-	{
-		if(defined $GeneratedDesc)
-		{
-			if ((length($currdesc) + length($part) + 1 + 24) > $maxlen)
-			{
-				$GeneratedDesc .= "\n";
-				$currdesc = '';
-			}
-			else
-			{
-				$currdesc .= ' ';
-				$GeneratedDesc .= ' ';
-			}
-		}
-		$currdesc .= $part;
-		$GeneratedDesc .= $part;
-	}
-	# Something went wrong
-	pDie('Option mismatch') if not $GeneratedDesc;
-	# Print it all
-	foreach my $description (split(/\n/,$GeneratedDesc))
-	{
-		printf "%-4s %-19s %s\n", $short,$long,$description;
-		# Set short and long to '' to ensure we don't print the options twice
-		$short = '';$long = '';
-	}
-	# Succeed
-	return true;
+    # The short option
+    my $short = shift,
+    # The long option
+    my $long = shift;
+    # The description
+    my $desc = shift;
+    # The generated description that will be printed in the end
+    my $GeneratedDesc;
+    # The current line of the description
+    my $currdesc = '';
+    # The maximum length any line can be
+    my $maxlen = 80;
+    # The length the options take up
+    my $optionlen = 20;
+    # Check if the short/long are LONGER than optionlen, if so, we need
+    # to do some additional magic to take up only $maxlen.
+    # The +1 here is because we always add a space between them, no matter what
+    if ((length($short) + length($long) + 1) > $optionlen)
+    {
+        $optionlen = length($short) + length($long) + 1;
+    }
+    # Split the description into lines
+    foreach my $part (split(/ /,$desc))
+    {
+        if(defined $GeneratedDesc)
+        {
+            if ((length($currdesc) + length($part) + 1 + 24) > $maxlen)
+            {
+                $GeneratedDesc .= "\n";
+                $currdesc = '';
+            }
+            else
+            {
+                $currdesc .= ' ';
+                $GeneratedDesc .= ' ';
+            }
+        }
+        $currdesc .= $part;
+        $GeneratedDesc .= $part;
+    }
+    # Something went wrong
+    pDie('Option mismatch') if not $GeneratedDesc;
+    # Print it all
+    foreach my $description (split(/\n/,$GeneratedDesc))
+    {
+        printf "%-4s %-19s %s\n", $short,$long,$description;
+        # Set short and long to '' to ensure we don't print the options twice
+        $short = '';$long = '';
+    }
+    # Succeed
+    return true;
 }
 
 # Purpose: Get the version of a shell utility
@@ -1398,8 +1398,8 @@ sub getVersionFrom
 sub debugInfo
 {
     print "gpgpwd version $VERSION\n";
-	print "\n";
-	my $pattern = "%-28s: %s\n";
+    print "\n";
+    my $pattern = "%-28s: %s\n";
     printf($pattern,'Data file',$storagePath);
     printf($pattern, 'Perl version', sprintf('%vd',$^V));
     printf($pattern, 'gpg version', getVersionFrom('gpg','--version'));
@@ -1449,7 +1449,7 @@ sub main
     $| = true;
 
     my $noRequireAgent = false;
-    my $noGit = false;
+    my $noGit          = false;
 
     if (@ARGV == 0)
     {
@@ -1573,7 +1573,7 @@ sub main
     if ($ENV{GPG_AGENT_INFO} && $useGpgAgent)
     {
         $requireAgent = true;
-        my @GPGInfo = split(':',$ENV{GPG_AGENT_INFO});
+        my @GPGInfo   = split(':',$ENV{GPG_AGENT_INFO});
         if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
         {
             $requireAgent = true;
