@@ -510,13 +510,12 @@ sub verifyMetadataSignature
     $ENV{LC_ALL} = $LC_ALL;
 }
 
-# Purpose: Load the password database
-# Usage: $data = loadData(PATH);
-# PATH is the path to the location of the database
-# 
-# If PATH does not exist then it will return an empty (but usable)
-# $data ref.
-sub loadData
+# Purpose: Retrieve the JSON structure stored in the password database
+# Usage: ($preV2,$structure) = loadJSONStructure(PATH);
+# NOTE: In practically all circumstances you want to call loadData() and NOT
+#   loadJSONStructure. loadData performs validation, upgrades, safety checks
+#   and so on which this function does not.
+sub loadJSONStructure
 {
     my $path = shift;
     if (!-e $path)
@@ -531,7 +530,7 @@ sub loadData
     my $string = gpgIO(undef,[ '--decrypt',$path ]);
     if (!defined($string))
     {
-        die('Decryption failed: GPG did not return any data'."\n");
+        pDie('Decryption failed: GPG did not return any data'."\n");
     }
 
     # If we are using v2+ data format, then we need to perform additional parsing
@@ -582,6 +581,19 @@ sub loadData
             'If the file is a corrupt gpgpwd file, you may be able to recover it by'."\n".
             'manually decrypting the file and then editing it.'."\n");
     };
+    return ($preV2,$data);
+}
+
+# Purpose: Load the password database
+# Usage: $data = loadData(PATH);
+# PATH is the path to the location of the database
+#
+# If PATH does not exist then it will return an empty (but usable)
+# $data ref.
+sub loadData
+{
+    my $path = shift;
+    my($preV2,$data) = loadJSONStructure($path);
 
     my $forceUnsafeMessage = "\n".'Ignoring this error may lead to data loss and corruption.'."\n".
     'If you are sure that\'s what you want you may use --force-unsafe.'."\n";
@@ -619,6 +631,18 @@ sub loadData
         {
             pDie('Upgrade triggered on V2-labelled file. The password database may be corrupt.'."\n");
         }
+        if ($enableGit)
+        {
+            print "Old data format detected, performing a git pull...\n";
+            git('pull',$storagePath);
+            print "Reloading data from git...\n";
+            ($preV2,$data) = loadJSONStructure($path);
+            if (!$preV2)
+            {
+                print "Data in git has been upgraded, continuing...\n";
+                return loadData($path);
+            }
+        }
         # Clear the screen, if possible, to draw attention to the upgrade message
         if(InPath('clear'))
         {
@@ -634,8 +658,7 @@ sub loadData
         print "If this has happened before someone has modified your database\n";
         print "and the integrity of your password list may have been compromised.\n";
         print "\n";
-        $| = 1;
-        # Sleep for 20 seconds before starting the upgrade0
+        # Sleep for 20 seconds before starting the upgrade
         print 'Conversion starting in ';
         for(my $r = 20; $r > 0; $r--)
         {
@@ -648,12 +671,6 @@ sub loadData
             print "\b";
         }
         print "\r                          \r";
-        if ($enableGit)
-        {
-            print "First performing a git pull... ";
-            git('pull',$storagePath);
-            print "\n";
-        }
         print 'Converting ...';
         # Perform data conversion. Encrypts every password explicitly.
         foreach my $pwd (keys %{$data->{pwds}})
@@ -1588,7 +1605,6 @@ sub main
 
     if ($command eq 'get')
     {
-        my $fileID = getFileID($storagePath);
         if(! @ARGV)
         {
             warn('Missing parameter to get: what to retrieve'."\n");
@@ -1604,6 +1620,7 @@ sub main
 
         if ($enableGit)
         {
+            my $fileID = getFileID($storagePath);
             git('safepull',$storagePath);
             # If the file has changed due to the pull, then we re-fetch
             if ($fileID ne getFileID($storagePath))
