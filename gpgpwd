@@ -1401,6 +1401,7 @@ sub debugInfo
     print "\n";
     my $pattern = "%-28s: %s\n";
     printf($pattern,'Data file',$storagePath);
+    printf($pattern, 'Data version',$dataVersion);
     printf($pattern, 'Perl version', sprintf('%vd',$^V));
     printf($pattern, 'gpg version', getVersionFrom('gpg','--version'));
     printf($pattern, 'gpg2 version', getVersionFrom('gpg2','--version'));
