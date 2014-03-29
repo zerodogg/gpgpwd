@@ -1,7 +1,13 @@
+=encoding utf8
+
 =head1 gpgpwd data format specification
 
 This file specifies the gpgpwd data format, revision 2, as implemented by
 gpgpwd.
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in RFC 2119.
 
 =head1 OVERVIEW
 
@@ -19,21 +25,30 @@ gpgpwd.
 
 =head2 On-disk format
 
-The JSON datastructure contains a set of keys, and a "pwds" structure.  The
-JSON dump has had a newline added at each comma to avoid too long lines (which
-gpg doesn't like for text signatures). All newlines should be stripped before
-parsing the JSON.
+The JSON datastructure must contain the below set of keys, and a "pwds"
+structure.  The JSON dump should have a newline added at each comma to avoid
+too long lines (which gpg doesn't like for text signatures).
+
+When loading the data, all newlines must be stripped before attempting to parse
+the JSON. If the JSON fails to parse then the program should error out and
+provide the user with information about how to recover their data.
 
 =over
 
 =item lastVersion
 
-Contains the version number of the gpgpwd version that wrote the file
+Must contain the version number of the application (usually gpgpwd) that wrote
+the file. If another program implements this data format, that programs version
+number should be inserted instead.
 
 =item gpgpwdDataVersion
 
-Contains the version number of the gpgpwd data format. Will be "2" for the
-format specified in this file.
+Contains the version number of the gpgpwd data format. Must be "2" for the
+format specified in this file. If this field is a value other than "2" then the
+program should error out. If it is a value lower than "2" it may perform an
+upgrade to version 2. If it is higher than "2" the program should error out
+with a message referencing where to find a newer version of the program that
+may support this format version.
 
 =item generator
 
@@ -42,29 +57,68 @@ gpgpwd writes the application name, version and URL in this field.
 
 =item pwds
 
-This is a key->value structure. Each key is the name of the website stored,
-and the value is a base64-encoded gpg-encrypted password.
+This is a key->value structure. The key must be the user-provided name of what
+the password is for, the value must be the base64-encoded gpg-encrypted
+password. The base64 data should be without any newlines.
 
 =back
 
 =head2 Signature
 
-The JSON dump is signed by gpg, using the same key that will later be used to
-encrypt the data. Before a JSON parser can parse the JSON dump this will need
-to be stripped away.
+The JSON dump must be signed by gpg using the same key that will later be used
+to encrypt the data. Before a JSON parser can parse the JSON dump you must
+strip away all of the gpg metadata (including the two BEGIN lines, the
+signature and signature fields, the hash-field and the END line).
+
+When loading a file this signature must be verified and compared to belong to
+the key that was used for the outer encryption. If it does not match then the
+program should error out, but it may optionally provide the user a means to
+bypass the check to retrieve whatever data is contained, but in this case it
+must inform the user clearly that the data may have been compromised.
 
 =head2 Encrypted dump
 
-Finally, the gpg-signed JSON dump is stored as a binary encrypted file through
-gpg.
+The gpg-signed JSON dump must be stored as a binary encrypted file through gpg.
+GPG-compression should be disabled.
+
+=head1 Error handling
+
+Most of the error handling has already been specified. In the case of "garbage"
+or unknown data within the file, the application should immediately error out.
+In these cases the application should provide information about the error,
+advice on recovering data and suggestions about where a newer version of the
+program may be downloaded (which may be able to read the file).
+
+=head1 Backwards compatibility
+
+Revision 1 of this data format was never specified, thus no backwards
+compatibility is required. The implementer may optionally implement an
+upgrade path from revision 1 as specified in this section.
+
+Revision 1 files do not contain a signature, and the field gpgpwdDataVersion
+must be "1". The program may thus chose to interperate a file missing a
+signature as it containing a revision 1 data structure and then load that as
+JSON. Once that is done it must verify that gpgpwdDataVersion is "1".
+
+If both of these tests verify then the application may perform the upgrade.
+The upgrade involves iterating through all entries in the "pwds" structure,
+encrypting each of the values and storing them according to this specification.
+Once this has been done, the gpgpwdDataVersion field must be increased to "2".
+At this point the data structure loaded matches revision 2 as specified in this
+file and the program may write it as a revision 2 file (signed and encrypted,
+as previously specified).
 
 =head1 EXAMPLE
+
+This is an example of the JSON-dump with a GPG signature, as it would look when
+decrypted manually by the user, or in gpgpwd before adding the final outer
+layer of encryption.
 
     -----BEGIN PGP SIGNED MESSAGE-----
     Hash: SHA1
 
     {"lastVersion":"0.4",
-    "pwds":{"guildwars2":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."}
+    "pwds":{"guildwars2":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."},
     "gpgpwdDataVersion":"2",
     "generator":"gpgpwd 0.4 - http://random.zerodogg.org/gpgpwd"}
     -----BEGIN PGP SIGNATURE-----
