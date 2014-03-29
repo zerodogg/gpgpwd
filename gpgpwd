@@ -874,7 +874,7 @@ sub set
 
     if(defined $data->{pwds}->{$name})
     {
-        print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$password."\n";
+        print 'Changed '.$name.' from '.gpgDecryptString($data->{pwds}->{$name},true).' to '.$password."\n";
     }
     $data->{pwds}->{$name} = gpgEncryptString($password,true);
 }
