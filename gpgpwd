@@ -1178,7 +1178,7 @@ sub getMatches
                 }
             }
             $matches->{$key} = {
-                password => gpgDecryptString($data->{pwds}->{$key},1),
+                password => $data->{pwds}->{$key},
                 score => $entryScore,
             };
         }
@@ -1197,7 +1197,7 @@ sub outputEntry
     my $content = shift;
     my $copy = shift;
     my $copied = '';
-    my $value = $content->{password};
+    my $value = gpgDecryptString($content->{password},1);
     if ($copy)
     {
         $copied = toClipboard($value,true);
