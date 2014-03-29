@@ -98,6 +98,7 @@ sub pExit
     {
         my @GPGInfo = split(':',$ENV{GPG_AGENT_INFO});
         kill($GPGInfo[1]);
+        printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
     }
     if (-e $storagePath.'~' && ! -e $storagePath)
     {
@@ -1337,7 +1338,7 @@ sub printHelp
 		$GeneratedDesc .= $part;
 	}
 	# Something went wrong
-	die('Option mismatch') if not $GeneratedDesc;
+	pDie('Option mismatch') if not $GeneratedDesc;
 	# Print it all
 	foreach my $description (split(/\n/,$GeneratedDesc))
 	{
