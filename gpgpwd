@@ -46,7 +46,6 @@ my $enableGit        = false;
 my $forceUnsafe      = false;
 my $requireAgent     = false;
 my $useXclip         = true;
-my $useGpgAgent      = true;
 my $verbosity        = 0;
 my $allMatches       = false;
 my $autoGPGAgent;
@@ -197,11 +196,6 @@ sub autoInitGPGAgent
     if (defined($autoGPGAgent))
     {
         return;
-    }
-    elsif (!$useGpgAgent)
-    {
-        printv(V_DEBUG,'Not autostarting gpg-agent: use of gpg-agent explicitly disabled by user'."\n");
-        $autoGPGAgent = -1;
     }
     elsif (!defined($ENV{GPG_AGENT_INFO}) || !length($ENV{GPG_AGENT_INFO}))
     {
@@ -1291,7 +1285,6 @@ sub usage
     printHelp('-G','--no-git','Disable git mode (overriding --git)');
     printHelp('-C','--no-xclip','Disable copying of passwords to the clipboard when running under X');
     printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
-    printHelp('-A','--disable-agent','Disable all use of gpg-agent (implies -R)');
     printHelp('','--all','Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp('','--debuginfo','Display some information that can be useful for debugging');
     print "\n";
@@ -1412,7 +1405,7 @@ sub debugInfo
     printf($pattern,'git version',getVersionFrom('git','--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit forceUnsafe requireAgent useGpgAgent useXclip allMatches))
+    foreach my $flag (qw(enableGit forceUnsafe requireAgent useXclip allMatches))
     {
         if (! eval('$'.$flag))
         {
@@ -1452,7 +1445,6 @@ sub main
 {
     $| = true;
 
-    my $noRequireAgent = false;
     my $noGit          = false;
 
     if (@ARGV == 0)
@@ -1517,7 +1509,7 @@ sub main
             print 'Note: --try-require-agent is the default as of version 0.4'."\n";
         },
         'disable-agent' => sub {
-            $useGpgAgent = false;
+            print 'Note: --disable-agent is a no-op as of version 0.4. The agent is required.'."\n";
         },
         'all' => \$allMatches,
     ) or pDie('See --help for more information'."\n");
@@ -1546,10 +1538,6 @@ sub main
         # top of main() )
         printv(V_INFO,'Using gpg2 instead of gpg'."\n");
         $gpg[0] = 'gpg2';
-        if (!$useGpgAgent)
-        {
-            pDie('You only have gpg2 installed (not gpg). --disable-agent does not work with gpg2'."\n");
-        }
     }
 
     # Verify that we're able to read and write to $storagePath, as well as
@@ -1574,7 +1562,7 @@ sub main
         }
     }
 
-    if ($ENV{GPG_AGENT_INFO} && $useGpgAgent)
+    if ($ENV{GPG_AGENT_INFO})
     {
         $requireAgent = true;
         my @GPGInfo   = split(':',$ENV{GPG_AGENT_INFO});
@@ -1593,24 +1581,6 @@ sub main
         else
         {
             delete($ENV{GPG_AGENT_INFO});
-        }
-    }
-    if (!$requireAgent)
-    {
-        $noRequireAgent = true;
-    }
-
-    # Unset requireAgent if --disable-agent  was specified.
-    if ($noRequireAgent || !$useGpgAgent)
-    {
-        $requireAgent = false;
-    }
-    if (!$useGpgAgent)
-    {
-        $requireAgent = false;
-        if ($gpg[0] ne 'gpg2')
-        {
-            push(@gpg,'--no-use-agent');
         }
     }
 
@@ -1855,10 +1825,6 @@ Copy to the 'selection' clipboard. Paste with ie. middle-click.
 Copy to both the 'normal' and 'selection' clipboards.
 
 =back
-
-=item B<-A, --disable-agent>
-
-Disables all use of gpg-agent.
 
 =item B<--all>
 

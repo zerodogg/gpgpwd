@@ -8,8 +8,8 @@ Version 0.4
     database as a whole. This protects against attacks on the
     in-memory decrypted password database.
 - Replaced the slower --git mode with the one used by --fast-git
-- Made --try-require-agent the default. Removed --require-agent and
-    --no-require-agent.
+- Made the equivalent of the old --try-require-agent parameter the default.
+    Removed --require-agent, --no-require-agent and --disable-agent.
 - Added automatic starting of a gpg-agent when needed (if gpgpwd starts
     a gpg-agent, that agent will be shut down before gpgpwd exits)
 
