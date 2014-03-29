@@ -1,4 +1,6 @@
 Version 0.4
+  NOTE: The data format changes in 0.4 makes the password database unreadable
+        with gpgpwd 0.3 and earlier.
 - Added a cryptographic signature to the password database to allow
     gpgpwd to detect tampering.
 - Added a second layer of encryption where each password is encrypted
