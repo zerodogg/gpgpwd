@@ -795,7 +795,7 @@ sub loadFromFile
             print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$pwd."\n";
         }
         $read++;
-        $data->{pwds}->{$name} = $pwd;
+        $data->{pwds}->{$name} = gpgEncryptString($pwd,1);
     }
     close($in);
     print 'Read '.$read.' entries from '.$file."\n";
@@ -846,7 +846,7 @@ sub set
     {
         print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$password."\n";
     }
-    $data->{pwds}->{$name} = $password;
+    $data->{pwds}->{$name} = gpgEncryptString($password,1);
 }
 
 # Purpose: Get a fuzzy regexp for simple typos or missing characters
