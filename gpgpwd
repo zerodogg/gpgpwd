@@ -97,7 +97,7 @@ sub pExit
     if (defined($autoGPGAgent) && $autoGPGAgent > -1)
     {
         my @GPGInfo = split(':',$ENV{GPG_AGENT_INFO});
-        kill($GPGInfo[1]);
+        kill('SIGINT',$GPGInfo[1]);
         printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
     }
     if (-e $storagePath.'~' && ! -e $storagePath)
