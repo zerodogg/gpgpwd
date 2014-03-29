@@ -1577,7 +1577,6 @@ sub main
     if (!$requireAgent)
     {
         $noRequireAgent = true;
-        $useGpgAgent = false;
     }
 
     # Unset requireAgent if --disable-agent  was specified.
