@@ -194,7 +194,16 @@ sub randomPwd
 # Usage: autoInitGPGAgent()
 sub autoInitGPGAgent
 {
-    if (!defined($ENV{GPG_AGENT_INFO}) || !length($ENV{GPG_AGENT_INFO}))
+    if (defined($autoGPGAgent))
+    {
+        return;
+    }
+    elsif (!$useGpgAgent)
+    {
+        printv(V_DEBUG,'Not autostarting gpg-agent: use of gpg-agent explicitly disabled by user'."\n");
+        $autoGPGAgent = -1;
+    }
+    elsif (!defined($ENV{GPG_AGENT_INFO}) || !length($ENV{GPG_AGENT_INFO}))
     {
         if(InPath('gpg-agent'))
         {
@@ -208,8 +217,6 @@ sub autoInitGPGAgent
             chomp($info);
             # Set the GPG_AGENT_INFO environment variable for gpg to use
             $ENV{GPG_AGENT_INFO} = $info;
-            # Enable the gpg agent
-            $useGpgAgent = true;
             printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
             # Disable tty
             if (!$requireAgent)
@@ -217,6 +224,11 @@ sub autoInitGPGAgent
                 printv(V_DEBUG,'Enabling agent requirement (--no-tty)'."\n");
                 $requireAgent = true;
                 push(@gpg,'--no-tty');
+                # Explicitly enable the agent for gpg1
+                if ($gpg[0] ne 'gpg2')
+                {
+                    push(@gpg,'--use-agent');
+                }
             }
         }
         else
@@ -1568,6 +1580,11 @@ sub main
             # Add --no-tty to gpg's parameter list to reduce its output and
             # require a gpg-agent.
             push(@gpg,'--no-tty');
+            # Explicitly enable the agent for gpg1
+            if ($gpg[0] ne 'gpg2')
+            {
+                push(@gpg,'--use-agent');
+            }
         }
         else
         {
@@ -1584,11 +1601,7 @@ sub main
     {
         $requireAgent = false;
     }
-    if ($useGpgAgent)
-    {
-        push(@gpg,'--use-agent');
-    }
-    else
+    if (!$useGpgAgent)
     {
         $requireAgent = false;
         if ($gpg[0] ne 'gpg2')
