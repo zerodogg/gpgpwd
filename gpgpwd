@@ -820,9 +820,13 @@ sub loadFromFile
         {
             pDie('Failed to parse line '.$line.' in '.$file."\n");
         }
-        if ($data->{pwds}->{$name} && $data->{pwds}->{$name} ne $pwd)
+        if(defined $data->{pwds}->{$name})
         {
-            print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$pwd."\n";
+            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},true);
+            if ($decryptedPW ne $pwd)
+            {
+                print 'Changed '.$name.' from '.$decryptedPW.' to '.$pwd."\n";
+            }
         }
         $read++;
         $data->{pwds}->{$name} = gpgEncryptString($pwd,true);
@@ -1678,7 +1682,7 @@ sub main
         my $data = loadData($storagePath);
         if ($data->{pwds}->{$name})
         {
-            print 'Removed '.$name.' (with the password '.$data->{pwds}->{$name}.')'."\n";
+            print 'Removed '.$name.' (with the password '.gpgDecryptString($data->{pwds}->{$name},true).')'."\n";
             delete($data->{pwds}->{$name});
         }
         else
