@@ -1445,7 +1445,8 @@ sub main
 {
     $| = true;
 
-    my $noGit          = false;
+    my $noGit     = false;
+    my $debugInfo = false;
 
     if (@ARGV == 0)
     {
@@ -1472,7 +1473,7 @@ sub main
         'p|password-file=s' => \$storagePath,
         'g|git|i|fast-git' => \$enableGit,
         'G|no-git' => \$noGit,
-        'debuginfo' => \&debugInfo,
+        'debuginfo' => \$debugInfo,
         'C|no-xclip' => sub { $useXclip = false; },
         'c|xclip-clipboard=s' => sub
         {
@@ -1516,7 +1517,7 @@ sub main
 
     my $command = shift(@ARGV);
 
-    if (!$command)
+    if (!$command && !$debugInfo)
     {
         usage(0);
     }
@@ -1590,7 +1591,11 @@ sub main
         $enableGit   = false;
     }
 
-    if ($command eq 'get')
+    if ($debugInfo)
+    {
+        debugInfo();
+    }
+    elsif ($command eq 'get')
     {
         if(! @ARGV)
         {
