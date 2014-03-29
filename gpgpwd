@@ -1395,6 +1395,8 @@ sub getVersionFrom
 # Usage: debugInfo();
 sub debugInfo
 {
+    autoInitGPGAgent();
+
     print "gpgpwd version $VERSION\n";
     print "\n";
     my $pattern = "%-28s: %s\n";
@@ -1421,6 +1423,10 @@ sub debugInfo
     else
     {
         $flags .= 'useGPGv1';
+    }
+    if ($autoGPGAgent > -1)
+    {
+        $flags .= ' autoGPGAgent';
     }
     printf($pattern,'flags',$flags);
 
