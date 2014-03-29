@@ -48,7 +48,7 @@ my $requireAgent     = false;
 my $useXclip         = true;
 my $useGpgAgent      = true;
 my $verbosity        = 0;
-my $allMatches       = 0;
+my $allMatches       = false;
 my $autoGPGAgent;
 my @clipboardTargets = qw(clipboard);
 
@@ -337,10 +337,10 @@ sub gpgIO
     {
         foreach my $handle (@handles)
         {
-            my $read = 0;
+            my $read = false;
             while(my $data = <$handle>)
             {
-                $read = 1;
+                $read = true;
                 $output .= $data;
             }
             if (!$read)
@@ -491,7 +491,7 @@ sub verifyMetadataSignature
     {
         pDie('Signature validation failed: Unable to retrieve signature list from gpg'."\n");
     }
-    my $valid = 0;
+    my $valid = false;
     my $sigKeyLen = length($sigKey);
     # Iterate through all lines returned from gpg
     foreach my $line(split(/\n/,$keyList))
@@ -507,7 +507,7 @@ sub verifyMetadataSignature
             # same key, and the validation has succeeded.
             if (index($content[4],$sigKey) == ( length($content[4]) - $sigKeyLen ) )
             {
-                $valid = 1;
+                $valid = true;
                 last;
             }
         }
@@ -539,7 +539,7 @@ sub loadJSONStructure
         };
     }
 
-    my $preV2 = 1;
+    my $preV2 = true;
     my $string = gpgIO(undef,[ '--decrypt',$path ]);
     if (!defined($string))
     {
@@ -550,17 +550,17 @@ sub loadJSONStructure
     if (index($string,'-----BEGIN PGP SIGNED MESSAGE-----') == 0)
     {
         # We're not using a pre V2 data format
-        $preV2 = 0;
+        $preV2 = false;
         # The JSON string will be stored here
         my $jsonString = '';
-        my $seenStart = 0;
+        my $seenStart = false;
         # Iterate through all lines to parse out the JSON string
         foreach my $l (split(/\n/,$string))
         {
             # A line starting with { indicates the beginning of the JSON string
             if (!$seenStart && (index($l,'{') == 0))
             {
-                $seenStart = 1;
+                $seenStart = true;
             }
             # The PGP SIGNATURE line indicates the end of the JSON string
             elsif (index($l,'-----BEGIN PGP SIGNATURE-----') == 0)
@@ -825,7 +825,7 @@ sub loadFromFile
             print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$pwd."\n";
         }
         $read++;
-        $data->{pwds}->{$name} = gpgEncryptString($pwd,1);
+        $data->{pwds}->{$name} = gpgEncryptString($pwd,true);
     }
     close($in);
     print 'Read '.$read.' entries from '.$file."\n";
@@ -876,7 +876,7 @@ sub set
     {
         print 'Changed '.$name.' from '.$data->{pwds}->{$name}.' to '.$password."\n";
     }
-    $data->{pwds}->{$name} = gpgEncryptString($password,1);
+    $data->{pwds}->{$name} = gpgEncryptString($password,true);
 }
 
 # Purpose: Get a fuzzy regexp for simple typos or missing characters
@@ -934,7 +934,7 @@ sub get
 
     foreach my $fuzzy (0..10)
     {
-        my $grantsStartEndBonus = 1;
+        my $grantsStartEndBonus = true;
         my $pattern = $name;
 
         if ($fuzzy > 1)
@@ -975,7 +975,7 @@ sub get
         # Fuzzy method 2: Simple typos or missing characters
         elsif ($fuzzy == 2)
         {
-            ($regex,$pattern) = getTypoOrMissingRegex($pattern,1);
+            ($regex,$pattern) = getTypoOrMissingRegex($pattern,true);
         }
         # Extra characters, or other mistakes, inside the word, but approx.
         # the correct length
@@ -1020,7 +1020,7 @@ sub get
             if ($fuzzy == 6)
             {
                 $pattern = '^'.$pattern.'$';
-                $grantsStartEndBonus = 0;
+                $grantsStartEndBonus = false;
             }
             $regex = qr/$pattern/;
         }
@@ -1048,7 +1048,7 @@ sub get
 
             $pattern = '^['.$pattern.']+$';
             $regex = qr/$pattern/i;
-            $grantsStartEndBonus = 0;
+            $grantsStartEndBonus = false;
         }
         else
         {
@@ -1197,7 +1197,7 @@ sub outputEntry
     my $content = shift;
     my $copy = shift;
     my $copied = '';
-    my $value = gpgDecryptString($content->{password},1);
+    my $value = gpgDecryptString($content->{password},true);
     if ($copy)
     {
         $copied = toClipboard($value,true);
@@ -1446,7 +1446,7 @@ sub debugInfo
 # Usage: main()
 sub main
 {
-    $| = 1;
+    $| = true;
 
     my $noRequireAgent = false;
     my $noGit = false;
