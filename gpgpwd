@@ -1403,7 +1403,12 @@ sub debugInfo
     printf($pattern , 'Data file'         , $storagePath);
     printf($pattern , 'Data version'      , $dataVersion);
     printf($pattern , 'Perl version'      , sprintf('%vd', $^V));
-    printf($pattern , 'gpg version'       , getVersionFrom('gpg'       , '--version'));
+    my $gpgV = getVersionFrom('gpg'       , '--version');
+    if (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
+    {
+        $gpgV = '(symlinked to gpg2)';
+    }
+    printf($pattern , 'gpg version'       , $gpgV);
     printf($pattern , 'gpg2 version'      , getVersionFrom('gpg2'      , '--version'));
     printf($pattern , 'gpg-agent version' , getVersionFrom('gpg-agent' , '--version'));
     printf($pattern , 'xclip version'     , getVersionFrom('xclip'     , '-version'));
