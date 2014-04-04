@@ -28,6 +28,7 @@ use IO::Handle;
 use IO::Select;
 use File::Copy qw(move);
 use File::Basename qw(basename dirname);
+use Term::ReadLine;
 use Cwd qw(getcwd);
 use constant {
     true => 1,
@@ -862,8 +863,8 @@ sub set
     print 'Enter the password you want to use, or press enter to use the random'."\n";
     print 'password listed below.'."\n";
     print 'Random password: '.$random.$copied."\n";
-    print 'Password> ';
-    my $password = <STDIN>;
+    my $readLine = Term::ReadLine->new;
+    my $password = $readLine->readline('Password> ');
     chomp $password;
     if (!length $password)
     {
