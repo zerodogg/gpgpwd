@@ -13,6 +13,8 @@ Version 0.4
 - Added automatic starting of a gpg-agent when needed (if gpgpwd starts
     a gpg-agent, that agent will be shut down before gpgpwd exits)
 - Use Term::ReadLine to read input (enables use of arrow keys)
+- Added commands to the password prompt to allow the user to generate
+    an alphanumeric-only password when needed
 
 Version 0.3
 - Added --try-require-agent, acts like --require-agent if an agent

@@ -163,24 +163,29 @@ sub toClipboard
 }
 
 # Purpose: Get a random password
-# Usage: $randomPwd = randomPwd();
+# Usage: $randomPwd = randomPwd(length = 15, alphaNumOnly = false);
 sub randomPwd
 {
     my $length = shift;
+    my $alphaNumOnly = shift;
     $length  //= 15;
     my $pwd    = '';
     while(1)
     {
         # These characters are chosen specifically because they are usually selectable in
         # a terminal by simply double-clicking on the string.
-        my @chars = ('a'..'z','A'..'Z',0..9,',','.','/','?','%','&','#',':','_','=','+','@','~');
+        my @chars = ('a'..'z','A'..'Z',0..9);
+        if (!$alphaNumOnly)
+        {
+            push(@chars,',','.','/','?','%','&','#',':','_','=','+','@','~');
+        }
         while(length($pwd) < $length)
         {
             $pwd .= $chars[ rand scalar @chars ];
         }
         # Require a password to have at least one number, one lower- and one
         # upper-case character, and one non-word (symbol) character
-        if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && $pwd =~ /\W/)
+        if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && ($alphaNumOnly || $pwd =~ /\W/))
         {
             last;
         }
@@ -857,19 +862,79 @@ sub set
     my $data = shift;
     my $name = shift;
 
-    my $prompt = 'Password> ';
-    my $random = randomPwd();
-    my $copied = toClipboard($random,true);
-    print 'Enter the password you want to use, or press enter to use the random'."\n";
-    print 'password listed below.'."\n";
-    print 'Random password: '.$random.$copied."\n";
+    my ($password, $copied);
+    my $alphaNumeric = 0;
+    my $defaultLength = 15;
+    my $length = $defaultLength;
     my $readLine = Term::ReadLine->new;
-    my $password = $readLine->readline('Password> ');
-    chomp $password;
-    if (!length $password)
+
+    # Loop to retreive the password
+    while(1)
     {
-        $password = $random;
-        print "\b\r".$prompt.$random."\n";
+        # If $password is defined then this is a second-or-later iteration
+        # through the loop
+        if(defined $password)
+        {
+            print "\n";
+        }
+        my $prompt = 'Password> ';
+        # Generate a random password
+        my $random = randomPwd($length,$alphaNumeric);
+        # Copy it to the clipboard if needed
+        $copied = toClipboard($random,true);
+        print 'Enter the password you want to use, or press enter to use the random'."\n";
+        print 'password listed below. Some commands are available, enter /help to list them'."\n";
+        print 'Random password: '.$random.$copied."\n";
+        $password = $readLine->readline('Password> ');
+        chomp $password;
+        if (!length $password)
+        {
+            $password = $random;
+            print "\b\r".$prompt.$random."\n";
+            last;
+        }
+        # Output help text
+        elsif($password =~ m{^/help})
+        {
+            print "\n";
+            print "The following commands are available:\n";
+            printHelp('','/help','Display this help screen');
+            printHelp('','/alphanumeric','Generate an alphanumeric password (a password with only letters and numbers, without any symbols');
+            printHelp('','/regenerate','Regenerate a new password (with symbols, letters and numbers)');
+            print "Both /alphanumeric and /regenerate can take a single parameter,\n";
+            print "the length of the password to be generated. Ie. /alphanumeric 15\n";
+            print "will generate a 15-character long alphanumeric password\n";
+        }
+        # Generate a alphanumeric-only password
+        elsif($password =~ m{^/alphanumeric})
+        {
+            $alphaNumeric = 1;
+        }
+        # Generate a new password
+        elsif($password =~ m{^/regenerate})
+        {
+            $alphaNumeric = 0;
+        }
+        else
+        {
+            last;
+        }
+        # Handle a length-parameter supplied to /regenerate or /alphanumeric
+        if ($password =~ s{^/(regenerate|alphanumeric)\s+(\d+)\s*}{$2})
+        {
+            if ($password < 0 && $password > 1000)
+            {
+                print 'The password length must be higher than zero'."\n";
+            }
+            else
+            {
+                $length = $password;
+            }
+        }
+        else
+        {
+            $length = $defaultLength;
+        }
     }
 
     if(defined $data->{pwds}->{$name})
