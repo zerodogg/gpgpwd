@@ -24,7 +24,6 @@ use Try::Tiny;
 use IPC::Open2 qw(open2);
 use IPC::Open3 qw(open3);
 use MIME::Base64 qw(encode_base64 decode_base64);
-use IO::Handle;
 use IO::Select;
 use File::Copy qw(move);
 use File::Basename qw(basename dirname);
