@@ -68,6 +68,29 @@ sub printv
     }
 }
 
+# Purpose: Outputs a status message during initialization
+# Usage: statusOut(message)
+#
+# This is silent if verbosity is 0
+sub statusOut
+{
+    # Ignore status messages if verbosity > 0
+    if ($verbosity == 0)
+    {
+        my $message = shift;
+        state $prevLength = 0;
+        # Clear the previous message
+        print "\r";
+        for(my $i = $prevLength; $i > 0;$i--)
+        {
+            print " ";
+        }
+        # Output the new message
+        print "\r$message";
+        $prevLength = length($message);
+    }
+}
+
 # Purpose: system() wrapper that outputs the command if $verbosity >= V_LOG
 # Usage: Same as system()
 sub psystem
@@ -606,6 +629,7 @@ sub loadJSONStructure
 sub loadData
 {
     my $path         = shift;
+    statusOut('(loading password database)');
     my($preV2,$data) = loadJSONStructure($path);
 
     my $forceUnsafeMessage = "\n".'Ignoring this error may lead to data loss and corruption.'."\n".
@@ -1140,6 +1164,7 @@ sub get
             last;
         }
     }
+    statusOut('');
 
     if (! (keys %{$matches}))
     {
@@ -1261,6 +1286,7 @@ sub outputEntry
     my $content = shift;
     my $copy    = shift;
     my $copied  = '';
+    printf('%-20s: %s',$key,"...");
     my $value = gpgDecryptString($content->{password},true);
     if ($copy)
     {
@@ -1268,7 +1294,7 @@ sub outputEntry
     }
 
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
-    printf('%-20s: %s'."\n",$key,$value.$copied);
+    printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
 }
 
 # Purpose: Perform git actions
