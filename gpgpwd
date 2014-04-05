@@ -225,7 +225,7 @@ sub autoInitGPGAgent
     {
         return;
     }
-    elsif (!defined($ENV{GPG_AGENT_INFO}) || !length($ENV{GPG_AGENT_INFO}))
+    elsif(!gpgAgentRunning())
     {
         if(InPath('gpg-agent'))
         {
@@ -266,6 +266,21 @@ sub autoInitGPGAgent
         printv(V_DEBUG,'Not autostarting gpg-agent: already appears to be running'."\n");
         $autoGPGAgent = -1;
     }
+}
+
+# Purpose: Check if a gpg agent is running
+# Usage: bool = gpgAgentRunning()
+sub gpgAgentRunning
+{
+    if (defined($ENV{GPG_AGENT_INFO}) && length($ENV{GPG_AGENT_INFO}))
+    {
+        my @GPGInfo   = split(':',$ENV{GPG_AGENT_INFO});
+        if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
+        {
+            return 1;
+        }
+    }
+    return;
 }
 
 # Purpose: Write some data to gpg and return the output from gpg
@@ -1668,25 +1683,16 @@ sub main
         }
     }
 
-    if ($ENV{GPG_AGENT_INFO})
+    if(gpgAgentRunning)
     {
         $requireAgent = true;
-        my @GPGInfo   = split(':',$ENV{GPG_AGENT_INFO});
-        if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
+        # Add --no-tty to gpg's parameter list to reduce its output and
+        # require a gpg-agent.
+        push(@gpg,'--no-tty');
+        # Explicitly enable the agent for gpg1
+        if ($gpg[0] ne 'gpg2')
         {
-            $requireAgent = true;
-            # Add --no-tty to gpg's parameter list to reduce its output and
-            # require a gpg-agent.
-            push(@gpg,'--no-tty');
-            # Explicitly enable the agent for gpg1
-            if ($gpg[0] ne 'gpg2')
-            {
-                push(@gpg,'--use-agent');
-            }
-        }
-        else
-        {
-            delete($ENV{GPG_AGENT_INFO});
+            push(@gpg,'--use-agent');
         }
     }
 
