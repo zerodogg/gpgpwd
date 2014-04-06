@@ -932,7 +932,7 @@ sub set
             last;
         }
         # Output help text
-        elsif($password =~ m{^/help})
+        elsif(index($password,'/help') == 0)
         {
             print "\n";
             print "The following commands are available:\n";
@@ -944,12 +944,12 @@ sub set
             print "will generate a 15-character long alphanumeric password\n";
         }
         # Generate a alphanumeric-only password
-        elsif($password =~ m{^/alphanumeric})
+        elsif(index($password,'/alphanumeric') == 0)
         {
             $alphaNumeric = 1;
         }
         # Generate a new password
-        elsif($password =~ m{^/regenerate})
+        elsif(index($password,'/regenerate') == 0)
         {
             $alphaNumeric = 0;
         }
