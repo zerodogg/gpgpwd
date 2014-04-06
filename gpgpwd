@@ -1349,13 +1349,17 @@ sub git
     }
     if($command eq 'pull')
     {
-        print "\n(git): ";
+        print "\n(git pulling): ";
         if (psystem('git','pull','--rebase','--quiet') != 0)
         {
             if(psystem('git','pull','--quiet') != 0)
             {
                 pDie('Failed to git pull, you must manually resolve the conflict'."\n");
             }
+        }
+        elsif ($verbosity == 0)
+        {
+            print "\r";
         }
     }
     elsif($command eq 'push')
