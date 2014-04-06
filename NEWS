@@ -15,6 +15,7 @@ Version 0.4
 - Use Term::ReadLine to read input (enables use of arrow keys)
 - Added commands to the password prompt to allow the user to generate
     an alphanumeric-only password when needed
+- Can now handle ~/.gpgpwddb being a symlink when git-mode is enabled
 
 Version 0.3
 - Added --try-require-agent, acts like --require-agent if an agent

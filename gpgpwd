@@ -28,7 +28,7 @@ use IO::Select;
 use File::Copy qw(move);
 use File::Basename qw(basename dirname);
 use Term::ReadLine;
-use Cwd qw(getcwd);
+use Cwd qw(getcwd realpath);
 use constant {
     true => 1,
     false => undef,
@@ -1330,7 +1330,7 @@ sub git
     }
 
     my $cwd = getcwd;
-    chdir(dirname($path));
+    chdir(dirname(realpath($path)));
 
     if ($command eq 'safepull')
     {
@@ -1392,10 +1392,10 @@ sub usage
     printHelp(''   , '--version'         , 'Display version information and exit');
     printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
     printHelp('-p' , '--password-file'   , 'Save passwords to this file instead of ~/.gpgpwddb');
-    printHelp('-g' , '--git'             , 'Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
+    printHelp('-g' , '--git'             , 'Use git to synchronize the password file (see the manpage for details)');
     printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
     printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
-    printHelp('-c' , '--xclip-clipboard' , 'Use the clipboard supplied instead of the default, see the manpage for details');
+    printHelp('-c' , '--xclip-clipboard' , 'Use the clipboard supplied instead of the default (see the manpage for details)');
     printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
     print "\n";
@@ -1914,6 +1914,12 @@ change has been made. In read mode it will I<git pull> after getting a
 password, if it detects that the password file has changed after pulling,
 gpgpwd will process your get request again, in case the password you wanted has
 changed.
+
+It requires you to configure a git repository that contains your password file,
+and a central server that gpgpwd can push to and pull from. You will need to
+initialize and set up the git repository yourself. You will either need to use
+I<--password-file> to provide the path to the file in your git repository, or
+symlink I<~/.gpgpwddb> to the password file located in your git repository.
 
 =item B<-G, --no-git>
 
