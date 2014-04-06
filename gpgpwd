@@ -1388,23 +1388,23 @@ sub usage
     print 'USAGE: '.basename($0).' [OPTIONS]? [COMMAND] [PARAMETERS]'."\n";
     print "\n";
     print "Options:\n";
-    printHelp('','--help','View this help screen');
-    printHelp('','--version','Display version information and exit');
-    printHelp('-v','--verbose','Increase verbosity (can be supplied multiple times)');
-    printHelp('-p','--password-file','Save passwords to this file instead of ~/.gpgpwddb');
-    printHelp('-g','--git','Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
-    printHelp('-G','--no-git','Disable git mode (overriding --git)');
-    printHelp('-C','--no-xclip','Disable copying of passwords to the clipboard when running under X');
-    printHelp('-c','--xclip-clipboard','Use the clipboard supplied instead of the default, see the manpage for details');
-    printHelp('','--all','Return all possible results for "get", even very fuzzy results (default: return only the best results)');
-    printHelp('','--debuginfo','Display some information that can be useful for debugging');
+    printHelp(''   , '--help'            , 'View this help screen');
+    printHelp(''   , '--version'         , 'Display version information and exit');
+    printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
+    printHelp('-p' , '--password-file'   , 'Save passwords to this file instead of ~/.gpgpwddb');
+    printHelp('-g' , '--git'             , 'Enable git mode (makes gpgpwd pull, commit and push the password file, see the manpage for details)');
+    printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
+    printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
+    printHelp('-c' , '--xclip-clipboard' , 'Use the clipboard supplied instead of the default, see the manpage for details');
+    printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
+    printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
     print "\n";
     print "Commands:\n";
-    printHelp('','get [name]','Get password for [name] (where [name] can be a perl-compatible regular expression)');
-    printHelp('','set [name]','Add or change password for [name]');
-    printHelp('','remove [name]','Remove the entry for [name]');
-    printHelp('','rename [old] [new]','Rename the entry for [old] to [new]');
-    printHelp('','batchadd [file]','Batch add passwords from a file, see the manpage for the file syntax');
+    printHelp('' , 'get [name]'         , 'Get password for [name] (where [name] can be a perl-compatible regular expression)');
+    printHelp('' , 'set [name]'         , 'Add or change password for [name]');
+    printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
+    printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
+    printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
 
     if (defined $exitValue)
     {
