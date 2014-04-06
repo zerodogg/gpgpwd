@@ -135,7 +135,7 @@ sub pExit
 # Usage: InPath(FILE)
 sub InPath
 {
-    foreach (split /:/, $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return false;
+    foreach (split ':', $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return false;
 }
 
 # Purpose: Copy a string to the clipboard if possible
@@ -532,10 +532,10 @@ sub verifyMetadataSignature
     my $valid = false;
     my $sigKeyLen = length($sigKey);
     # Iterate through all lines returned from gpg
-    foreach my $line(split(/\n/,$keyList))
+    foreach my $line(split("\n",$keyList))
     {
         # The content is :-separated, split it into an array
-        my @content = split(/:/,$line);
+        my @content = split(':',$line);
         # We only care about 'sig' lines
         if ($content[0] eq 'sig')
         {
@@ -593,7 +593,7 @@ sub loadJSONStructure
         my $jsonString = '';
         my $seenStart  = false;
         # Iterate through all lines to parse out the JSON string
-        foreach my $l (split(/\n/,$string))
+        foreach my $l (split("\n",$string))
         {
             # A line starting with { indicates the beginning of the JSON string
             if (!$seenStart && (index($l,'{') == 0))
@@ -783,7 +783,7 @@ sub writeData
             'JSON error: '.$_."\n");
     };
     $encoded =~ s/,/,\n/g;
-    my @encodedSplit = split(/\n/,$encoded);
+    my @encodedSplit = split("\n",$encoded);
 
     # Sign the JSON string. The comment contains quick instructions on decrypting
     # the embedded passwords.
@@ -1435,7 +1435,7 @@ sub printHelp
         $optionlen = length($short) + length($long) + 1;
     }
     # Split the description into lines
-    foreach my $part (split(/ /,$desc))
+    foreach my $part (split(' ',$desc))
     {
         if(defined $GeneratedDesc)
         {
@@ -1456,7 +1456,7 @@ sub printHelp
     # Something went wrong
     pDie('Option mismatch') if not $GeneratedDesc;
     # Print it all
-    foreach my $description (split(/\n/,$GeneratedDesc))
+    foreach my $description (split("\n",$GeneratedDesc))
     {
         printf "%-4s %-19s %s\n", $short,$long,$description;
         # Set short and long to '' to ensure we don't print the options twice
