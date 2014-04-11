@@ -905,6 +905,12 @@ sub set
     my $defaultLength = 15;
     my $length = $defaultLength;
     my $readLine = Term::ReadLine->new;
+    my $existing;
+    if(defined $data->{pwds}->{$name})
+    {
+        $existing = gpgDecryptString($data->{pwds}->{$name},true);
+    }
+    statusOut('');
 
     # Loop to retreive the password
     while(1)
@@ -920,7 +926,15 @@ sub set
         my $random = randomPwd($length,$alphaNumeric);
         # Copy it to the clipboard if needed
         $copied = toClipboard($random,true);
-        print 'Enter the password you want to use, or press enter to use the random'."\n";
+        if (defined $existing)
+        {
+            print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
+            print 'Enter the password you want to change it to, or press enter to use the random'."\n";
+        }
+        else
+        {
+            print 'Enter the password you want to use, or press enter to use the random'."\n";
+        }
         print 'password listed below. Some commands are available, enter /help to list them'."\n";
         print 'Random password: '.$random.$copied."\n";
         $password = $readLine->readline('Password> ');
@@ -975,9 +989,9 @@ sub set
         }
     }
 
-    if(defined $data->{pwds}->{$name})
+    if(defined $existing)
     {
-        print 'Changed '.$name.' from '.gpgDecryptString($data->{pwds}->{$name},true).' to '.$password."\n";
+        print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
     }
     $data->{pwds}->{$name} = gpgEncryptString($password,true);
 }
@@ -1797,7 +1811,6 @@ sub main
         }
         git('pull',$storagePath);
         my $data = loadData($storagePath);
-        statusOut('');
         set($data,@ARGV);
         writeData($storagePath,$data);
     }
