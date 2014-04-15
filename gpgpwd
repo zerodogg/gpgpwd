@@ -904,7 +904,7 @@ sub set
     my $alphaNumeric = 0;
     my $defaultLength = 15;
     my $length = $defaultLength;
-    my $readLine = Term::ReadLine->new;
+    my $readLine = Term::ReadLine->new('gpgpwd');
     my $existing;
     if(defined $data->{pwds}->{$name})
     {
