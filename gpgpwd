@@ -571,10 +571,10 @@ sub loadJSONStructure
     my $path = shift;
     if (!-e $path)
     {
-        return {
+        return (0, {
             gpgpwdDataVersion => $dataVersion,
             pwds => {},
-        };
+        });
     }
 
     my $preV2  = true;
