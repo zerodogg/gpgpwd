@@ -938,11 +938,20 @@ sub set
         print 'password listed below. Some commands are available, enter /help to list them'."\n";
         print 'Random password: '.$random.$copied."\n";
         $password = $readLine->readline('Password> ');
+        # If a user sends EOF, just go through the loop again
+        if (!defined $password)
+        {
+            print "\n";
+            next;
+        }
         chomp $password;
         if (!length $password)
         {
             $password = $random;
-            print "\b\r".$prompt.$random."\n";
+            if (!defined $existing)
+            {
+                print "Using password: $random\n";
+            }
             last;
         }
         # Output help text
