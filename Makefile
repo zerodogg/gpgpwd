@@ -42,7 +42,7 @@ clean:
 	rm -rf gpgpwd-$(VERSION)
 	rm -f gpgpwd.1
 # Verify syntax
-test:
+sanity:
 	@perl -c gpgpwd
 # Create a manpage from the POD
 man:
@@ -54,3 +54,6 @@ distrib: clean test man
 	tar -jcvf gpgpwd-$(VERSION).tar.bz2 ./gpgpwd-$(VERSION)
 	rm -rf gpgpwd-$(VERSION)
 	rm -f gpgpwd.1
+# Run tests
+test: sanity
+	perl t/gpgpwd.t
