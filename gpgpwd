@@ -25,7 +25,7 @@ use IPC::Open2 qw(open2);
 use IPC::Open3 qw(open3);
 use MIME::Base64 qw(encode_base64 decode_base64);
 use IO::Select;
-use File::Copy qw(move);
+use File::Copy qw(move copy);
 use File::Basename qw(basename dirname);
 use Term::ReadLine;
 use Cwd qw(getcwd realpath);
@@ -50,6 +50,7 @@ my $verbosity        = 0;
 my $allMatches       = false;
 my $autoGPGAgent;
 my @clipboardTargets = qw(clipboard);
+my $pDieUsepExit     = 1;
 
 # Purpose: print() wrapper that obeys $verbosity
 # Usage: printv(LEVEL, ...);
@@ -74,7 +75,7 @@ sub printv
 # This is silent if verbosity is 0
 sub statusOut
 {
-    # Ignore status messages if verbosity > 0
+    # Ignore status messages if verbosity != 0
     if ($verbosity == 0)
     {
         my $message = shift;
@@ -106,6 +107,10 @@ sub psystem
 # Usage: Same as die()
 sub pDie
 {
+    if (!$pDieUsepExit)
+    {
+        die(@_);
+    }
     warn(@_);
     pExit(254);
 }
@@ -710,6 +715,11 @@ sub loadData
         print "If this has happened before someone has modified your database\n";
         print "and the integrity of your password list may have been compromised.\n";
         print "\n";
+        # Don't perform upgrades when --force-unsafe was passed
+        if ($forceUnsafe)
+        {
+            pDie('Refusing to upgrade when --force-unsafe is in effect.'."\n");
+        }
         # Sleep for 20 seconds before starting the upgrade
         print 'Conversion starting in ';
         for(my $r = 20; $r > 0; $r--)
@@ -731,7 +741,67 @@ sub loadData
         }
         print "done\n";
         # Write out the data file with the converted data
+        print 'Writing updated data...';
+        # First, make a backup
+        if (-e $storagePath.'.gpgpwdupgrade')
+        {
+            pDie($storagePath.'.gpgpwdupgrade already exists. Move this file out of the way.'."\n");
+        }
+        copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
+        # Write the data
         writeData($storagePath,$data);
+        print "done\nVerifying integrity...";
+        try
+        {
+            # Check that the new data is larger than the old
+            if (-s $storagePath <= -s $storagePath.'.gpgpwdupgrade')
+            {
+                die('The old data file is larger than the new. This should not be possible.');
+             }
+             # Make pDie call die() directly instead of warn()+pExit()
+             $pDieUsepExit = 0;
+             # Temporarily reduce verbosity to avoid loadData() outputting
+             # status information
+             my $origVerbosity = $verbosity;
+             $verbosity = -1;
+             # Load the data, storing errors in $error
+             my $error;
+             try
+             {
+                 loadData($storagePath);
+             }
+             catch
+             {
+                 $error = $_;
+             };
+             # Reset pDie to its default mode
+             $pDieUsepExit = 1;
+             # Reset verbosity to its default or user-provided value
+             $verbosity = $origVerbosity;
+             # If the loadData failed, we error out
+             if (defined $error)
+             {
+                 die('Failed to load the upgraded file: '.$error);
+             }
+         }
+         catch
+         {
+             # Restore the backup file
+             print "failed\n";
+             unlink($storagePath);
+             move($storagePath.'.gpgpwdupgrade',$storagePath);
+             # Push the restored file if needed
+             git('push',$path);
+             # Make sure pDie is set to its default mode
+             $pDieUsepExit = 1;
+             # Error out
+             pDie('Error: '.$_.
+                 'Restoring the old file and aborting the upgrade to avoid corruption.'."\n".
+                 'This is likely a bug in gpgpwd.'."\n"
+             );
+         };
+         unlink($storagePath.'.gpgpwdupgrade');
+         print "done - upgrade successfully completed\n";
     }
     elsif($data->{gpgpwdDataVersion} ne '1' && $preV2)
     {
@@ -812,6 +882,17 @@ sub writeData
     # Write the JSON string encrypted to the supplied file
     gpgIO($encoded,[ '--encrypt','--output',$path ]);
     chmod(0600,$path);
+
+    # Perform some paranoid sanity checks. Verify that the file we just wrote
+    # is actually there and that it is above the minimum size of 1468 bytes.
+    if (!-e $path)
+    {
+        pDie('Fatal error: "'.$path.'" did not exist after writing the file'."\n");
+    }
+    elsif(-s $path < 1468)
+    {
+        pDie('Fatal error: the size of "'.$path.'" is too small'."\n");
+    }
 
     if ($forceUnsafe)
     {
