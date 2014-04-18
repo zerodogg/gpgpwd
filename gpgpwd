@@ -640,6 +640,139 @@ sub loadJSONStructure
     return ($preV2,$data);
 }
 
+# Purpose: Upgrade a v1 database file to v2
+# Usage: upgradeDataV1toV2($path,$data,$preV2);
+# $path is the path to the data file
+# $data is the data structure itself
+# $preV2 is the preV2 boolean as returned by loadJSONStructure
+sub upgradeDataV1toV2
+{
+    my $path = shift;
+    my $data = shift;
+    my $preV2 = shift;
+    # If we have seen V2+ data, but the file claims to be version 1 then
+    # something is corrupt, so we abort to avoid performing multiple
+    # conversions.
+    if ($preV2 == 0)
+    {
+        pDie('Upgrade triggered on V2-labelled file. The password database may be corrupt.'."\n");
+    }
+    if ($enableGit)
+    {
+        print "Old data format detected, performing a git pull...\n";
+        git('pull',$storagePath);
+        print "Reloading data from git...\n";
+        ($preV2,$data) = loadJSONStructure($path);
+        if (!$preV2)
+        {
+            print "Data in git has been upgraded, continuing...\n";
+            return loadData($path);
+        }
+    }
+    # Clear the screen, if possible, to draw attention to the upgrade message
+    if(InPath('clear'))
+    {
+        system('clear');
+    }
+    # Loudly scream about the impending data upgrade
+    print "********************* DATA UPGRADE *********************\n";
+    print "* YOU SHOULD ONLY EVER SEE THIS MESSAGE ONCE.          *\n";
+    print "* IF YOU HAVE SEEN IT BEFORE, ABORT NOW WITH CONTROL+C *\n";
+    print "********************************************************\n";
+    print "\n";
+    print "About to upgrade the data format to version $dataVersion.\n";
+    print "If this has happened before someone has modified your database\n";
+    print "and the integrity of your password list may have been compromised.\n";
+    print "\n";
+    # Don't perform upgrades when --force-unsafe was passed
+    if ($forceUnsafe)
+    {
+        pDie('Refusing to upgrade when --force-unsafe is in effect.'."\n");
+    }
+    # Sleep for 20 seconds before starting the upgrade
+    print 'Conversion starting in ';
+    for(my $r = 20; $r > 0; $r--)
+    {
+        print $r;
+        sleep(1);
+        if(length($r) > 1)
+        {
+            print "\b \b";
+        }
+        print "\b";
+    }
+    print "\r                          \r";
+    print 'Converting ...';
+    # Perform data conversion. Encrypts every password explicitly.
+    foreach my $pwd (keys %{$data->{pwds}})
+    {
+        $data->{pwds}->{$pwd} = gpgEncryptString($data->{pwds}->{$pwd},true);
+    }
+    print "done\n";
+    # Write out the data file with the converted data
+    print 'Writing updated data...';
+    # First, make a backup
+    if (-e $storagePath.'.gpgpwdupgrade')
+    {
+        pDie($storagePath.'.gpgpwdupgrade already exists. Move this file out of the way.'."\n");
+    }
+    copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
+    # Write the data
+    writeData($storagePath,$data);
+    print "done\nVerifying integrity...";
+    try
+    {
+        # Check that the new data is larger than the old
+        if (-s $storagePath <= -s $storagePath.'.gpgpwdupgrade')
+        {
+            die('The old data file is larger than the new. This should not be possible.');
+        }
+        # Make pDie call die() directly instead of warn()+pExit()
+        $pDieUsepExit = 0;
+        # Temporarily reduce verbosity to avoid loadData() outputting
+        # status information
+        my $origVerbosity = $verbosity;
+        $verbosity = -1;
+        # Load the data, storing errors in $error
+        my $error;
+        try
+        {
+            loadData($storagePath);
+        }
+        catch
+        {
+            $error = $_;
+        };
+        # Reset pDie to its default mode
+        $pDieUsepExit = 1;
+        # Reset verbosity to its default or user-provided value
+        $verbosity = $origVerbosity;
+        # If the loadData failed, we error out
+        if (defined $error)
+        {
+            die('Failed to load the upgraded file: '.$error);
+        }
+    }
+    catch
+    {
+        # Restore the backup file
+        print "failed\n";
+        unlink($storagePath);
+        move($storagePath.'.gpgpwdupgrade',$storagePath);
+        # Push the restored file if needed
+        git('push',$path);
+        # Make sure pDie is set to its default mode
+        $pDieUsepExit = 1;
+        # Error out
+        pDie('Error: '.$_.
+            'Restoring the old file and aborting the upgrade to avoid corruption.'."\n".
+            'This is likely a bug in gpgpwd.'."\n"
+        );
+    };
+    unlink($storagePath.'.gpgpwdupgrade');
+    print "done - upgrade successfully completed\n\n";
+}
+
 # Purpose: Load the password database
 # Usage: $data = loadData(PATH);
 # PATH is the path to the location of the database
@@ -681,127 +814,7 @@ sub loadData
     }
     elsif($data->{gpgpwdDataVersion} eq '1')
     {
-        # If we have seen V2+ data, but the file claims to be version 1 then
-        # something is corrupt, so we abort to avoid performing multiple
-        # conversions.
-        if ($preV2 == 0)
-        {
-            pDie('Upgrade triggered on V2-labelled file. The password database may be corrupt.'."\n");
-        }
-        if ($enableGit)
-        {
-            print "Old data format detected, performing a git pull...\n";
-            git('pull',$storagePath);
-            print "Reloading data from git...\n";
-            ($preV2,$data) = loadJSONStructure($path);
-            if (!$preV2)
-            {
-                print "Data in git has been upgraded, continuing...\n";
-                return loadData($path);
-            }
-        }
-        # Clear the screen, if possible, to draw attention to the upgrade message
-        if(InPath('clear'))
-        {
-            system('clear');
-        }
-        # Loudly scream about the impending data upgrade
-        print "********************* DATA UPGRADE *********************\n";
-        print "* YOU SHOULD ONLY EVER SEE THIS MESSAGE ONCE.          *\n";
-        print "* IF YOU HAVE SEEN IT BEFORE, ABORT NOW WITH CONTROL+C *\n";
-        print "********************************************************\n";
-        print "\n";
-        print "About to upgrade the data format to version $dataVersion.\n";
-        print "If this has happened before someone has modified your database\n";
-        print "and the integrity of your password list may have been compromised.\n";
-        print "\n";
-        # Don't perform upgrades when --force-unsafe was passed
-        if ($forceUnsafe)
-        {
-            pDie('Refusing to upgrade when --force-unsafe is in effect.'."\n");
-        }
-        # Sleep for 20 seconds before starting the upgrade
-        print 'Conversion starting in ';
-        for(my $r = 20; $r > 0; $r--)
-        {
-            print $r;
-            sleep(1);
-            if(length($r) > 1)
-            {
-                print "\b \b";
-            }
-            print "\b";
-        }
-        print "\r                          \r";
-        print 'Converting ...';
-        # Perform data conversion. Encrypts every password explicitly.
-        foreach my $pwd (keys %{$data->{pwds}})
-        {
-            $data->{pwds}->{$pwd} = gpgEncryptString($data->{pwds}->{$pwd},true);
-        }
-        print "done\n";
-        # Write out the data file with the converted data
-        print 'Writing updated data...';
-        # First, make a backup
-        if (-e $storagePath.'.gpgpwdupgrade')
-        {
-            pDie($storagePath.'.gpgpwdupgrade already exists. Move this file out of the way.'."\n");
-        }
-        copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
-        # Write the data
-        writeData($storagePath,$data);
-        print "done\nVerifying integrity...";
-        try
-        {
-            # Check that the new data is larger than the old
-            if (-s $storagePath <= -s $storagePath.'.gpgpwdupgrade')
-            {
-                die('The old data file is larger than the new. This should not be possible.');
-             }
-             # Make pDie call die() directly instead of warn()+pExit()
-             $pDieUsepExit = 0;
-             # Temporarily reduce verbosity to avoid loadData() outputting
-             # status information
-             my $origVerbosity = $verbosity;
-             $verbosity = -1;
-             # Load the data, storing errors in $error
-             my $error;
-             try
-             {
-                 loadData($storagePath);
-             }
-             catch
-             {
-                 $error = $_;
-             };
-             # Reset pDie to its default mode
-             $pDieUsepExit = 1;
-             # Reset verbosity to its default or user-provided value
-             $verbosity = $origVerbosity;
-             # If the loadData failed, we error out
-             if (defined $error)
-             {
-                 die('Failed to load the upgraded file: '.$error);
-             }
-         }
-         catch
-         {
-             # Restore the backup file
-             print "failed\n";
-             unlink($storagePath);
-             move($storagePath.'.gpgpwdupgrade',$storagePath);
-             # Push the restored file if needed
-             git('push',$path);
-             # Make sure pDie is set to its default mode
-             $pDieUsepExit = 1;
-             # Error out
-             pDie('Error: '.$_.
-                 'Restoring the old file and aborting the upgrade to avoid corruption.'."\n".
-                 'This is likely a bug in gpgpwd.'."\n"
-             );
-         };
-         unlink($storagePath.'.gpgpwdupgrade');
-         print "done - upgrade successfully completed\n";
+        upgradeDataV1toV2($path,$data,$preV2);
     }
     elsif($data->{gpgpwdDataVersion} ne '1' && $preV2)
     {
