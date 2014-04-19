@@ -82,7 +82,7 @@ sub statusOut
         print "\r";
         for(my $i = $prevLength; $i > 0;$i--)
         {
-            print " ";
+            print ' ';
         }
         # Output the new message
         print "\r$message";
@@ -169,7 +169,7 @@ sub toClipboard
     {
         open(my $write,'|-','xclip','-in','-selection',$target,'-silent') or return '';
         print {$write} $value or return '';
-        close($write);
+        close($write) or printv(V_INFO,'Failed to close filehandle to xclip: '.$!."\n");
     }
     return ' (copied)';
 }
@@ -181,9 +181,9 @@ sub randomPwd
     my $length = shift;
     my $alphaNumOnly = shift;
     $length  //= 15;
-    my $pwd    = '';
     while(1)
     {
+        my $pwd = '';
         # These characters are chosen specifically because they are usually selectable in
         # a terminal by simply double-clicking on the string.
         my @chars = ('a'..'z','A'..'Z',0..9);
@@ -199,12 +199,10 @@ sub randomPwd
         # upper-case character, and one non-word (symbol) character
         if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && ($alphaNumOnly || $pwd =~ /\W/))
         {
-            last;
+            return $pwd;
         }
-        # Password not accepted, so reset and try again
-        $pwd = '';
+        # Password not accepted, try again
     }
-    return $pwd;
 }
 
 # Purpose: Check for gpg-agent and start one if needed
@@ -362,10 +360,10 @@ sub gpgIO
         foreach my $handle (@handles)
         {
             my $read = false;
-            while(my $data = <$handle>)
+            while(my $input = <$handle>)
             {
                 $read = true;
-                $output .= $data;
+                $output .= $input;
             }
             if (!$read)
             {
@@ -894,7 +892,8 @@ sub loadFromFile
         $read++;
         $data->{pwds}->{$name} = gpgEncryptString($pwd,true);
     }
-    close($in);
+    # Failing to close is not much of a problem, so just log it.
+    close($in) or printv(V_INFO,'Failed to close filehandle: '.$!."\n");;
     print 'Read '.$read.' entries from '.$file."\n";
 }
 
@@ -1233,7 +1232,7 @@ sub get
         print '(no passwords found for "'.$name.'")'."\n";
         return;
     }
-    
+
     print 'Passwords:';
     if ($allMatches)
     {
@@ -1348,7 +1347,7 @@ sub outputEntry
     my $content = shift;
     my $copy    = shift;
     my $copied  = '';
-    printf('%-20s: %s',$key,"...");
+    printf('%-20s: %s',$key,'...');
     my $value = gpgDecryptString($content->{password},true);
     if ($copy)
     {
@@ -1526,7 +1525,6 @@ sub getVersionFrom
     {
         return 'not installed';
     }
-    eval('use IPC::Open3 qw(open3);');
     open3(my $in, my $out, my $err,@_);
     my $data;
     if ($out)
@@ -1776,7 +1774,7 @@ sub main
             {
                 print "\n";
                 print "File updated by git, re-reading passwords:\n";
-                my $data = loadData($storagePath);
+                $data = loadData($storagePath);
                 get($data,@ARGV);
             }
         }
