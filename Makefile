@@ -1,6 +1,6 @@
 # gpgpwd makefile
 
-VERSION=$(shell ./gpgpwd --version|perl -pi -e 's/^\D+//; chomp')
+VERSION=$(shell ./gpgpwd --version|perl -p -e 's/^\D+//; chomp')
 
 ifndef prefix
 # This little trick ensures that make install will succeed both for a local
@@ -19,7 +19,7 @@ endif
 BINDIR ?= $(prefix)/bin
 DATADIR ?= $(prefix)/share
 
-DISTFILES = COPYING gpgpwd INSTALL Makefile NEWS README.md gpgpwd.1
+DISTFILES = COPYING gpgpwd INSTALL Makefile NEWS README.md gpgpwd.1 t
 
 # Install gpgpwd
 install:
@@ -50,7 +50,7 @@ man:
 # Create the tarball
 distrib: clean test man
 	mkdir -p gpgpwd-$(VERSION)
-	cp $(DISTFILES) ./gpgpwd-$(VERSION)
+	cp -r $(DISTFILES) ./gpgpwd-$(VERSION)
 	tar -jcvf gpgpwd-$(VERSION).tar.bz2 ./gpgpwd-$(VERSION)
 	rm -rf gpgpwd-$(VERSION)
 	rm -f gpgpwd.1
