@@ -142,22 +142,16 @@ sub InPath
 }
 
 # Purpose: Copy a string to the clipboard if possible
-# Usage: $info = toClipboard(VALUE,RETURN_STRING);
+# Usage: $info = toClipboard(VALUE);
 # VALUE is the value to copy to the clipboard
-# RETURN_STRING is a boolean, if it is true then toClipboard returns a
-# string, which is empty if nothing was done and ' (copied)' if something
-# was copied to the clipboard.
+# toClipboard returns a string, which is empty if nothing was done and '
+# (copied)' if something was copied to the clipboard.
 sub toClipboard
 {
     my $value        = shift;
-    my $returnString = shift;
     if (!$useXclip)
     {
-        if ($returnString)
-        {
-            return '';
-        }
-        return;
+        return '';
     }
     if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
     {
@@ -169,11 +163,7 @@ sub toClipboard
         {
             printv(V_LOG,'Use of xclip disabled: not installed'."\n");
         }
-        if ($returnString)
-        {
-            return '';
-        }
-        return;
+        return '';
     }
     foreach my $target (@clipboardTargets)
     {
@@ -181,10 +171,7 @@ sub toClipboard
         print {$write} $value or return '';
         close($write);
     }
-    if ($returnString)
-    {
-        return ' (copied)';
-    }
+    return ' (copied)';
 }
 
 # Purpose: Get a random password
@@ -962,7 +949,7 @@ sub set
         # Generate a random password
         my $random = randomPwd($length,$alphaNumeric);
         # Copy it to the clipboard if needed
-        $copied = toClipboard($random,true);
+        $copied = toClipboard($random);
         if (defined $existing)
         {
             print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
@@ -1365,7 +1352,7 @@ sub outputEntry
     my $value = gpgDecryptString($content->{password},true);
     if ($copy)
     {
-        $copied = toClipboard($value,true);
+        $copied = toClipboard($value);
     }
 
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
