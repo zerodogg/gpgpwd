@@ -16,12 +16,18 @@ Dependencies
 Required:
 - perl (version 5.10 or later)
 - gpg
-- JSON (perl module - debian package: libjson-perl)
-- Try::Tiny (perl module - debian package: libtry-tiny-perl)
+- JSON (perl module)
+- Try::Tiny (perl module)
 
 Optional:
 - xclip
 - git
 
 To install all dependencies on a Debian-based distribution:
-    aptitude install libjson-perl libtry-tiny-perl gnupg xclip git
+    apt-get install libjson-perl libtry-tiny-perl gnupg xclip git
+
+To install all dependencies on a Arch-based distribution:
+    pacman -S perl-json perl-try-tiny gnupg xclip git
+
+To install all dependencies on a Fedora- or Mageia-based distribution:
+    yum install perl-JSON perl-Try-Tiny gnupg xclip git 
