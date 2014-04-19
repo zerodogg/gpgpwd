@@ -43,7 +43,6 @@ my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --qu
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 2;
 my $enableGit        = false;
-my $requireAgent     = false;
 my $useXclip         = true;
 my $verbosity        = 0;
 my $allMatches       = false;
@@ -245,16 +244,12 @@ sub autoInitGPGAgent
             $ENV{GPG_AGENT_INFO} = $info;
             printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
             # Disable tty
-            if (!$requireAgent)
+            printv(V_DEBUG,'Enabling agent requirement (--no-tty)'."\n");
+            push(@gpg,'--no-tty');
+            # Explicitly enable the agent for gpg1
+            if ($gpg[0] ne 'gpg2')
             {
-                printv(V_DEBUG,'Enabling agent requirement (--no-tty)'."\n");
-                $requireAgent = true;
-                push(@gpg,'--no-tty');
-                # Explicitly enable the agent for gpg1
-                if ($gpg[0] ne 'gpg2')
-                {
-                    push(@gpg,'--use-agent');
-                }
+                push(@gpg,'--use-agent');
             }
         }
         else
@@ -316,7 +311,7 @@ sub gpgIO
 
     # If we're not requiring an agent then gpg will output some messages. To
     # differenciate it from "our" output, encase it in a text block.
-    if (!$requireAgent && $requiresUnlocked)
+    if (!gpgAgentRunning() && $requiresUnlocked)
     {
         print '-- gpg --'."\n";
     }
@@ -406,7 +401,7 @@ sub gpgIO
     }
     # If we're not requiring an agent then gpg will output some messages. To
     # differenciate it from "our" output, encase it in a text block.
-    if (!$requireAgent && $requiresUnlocked)
+    if (!gpgAgentRunning() && $requiresUnlocked)
     {
         print '-- --- --'."\n";
     }
@@ -1591,7 +1586,7 @@ sub debugInfo
     printf($pattern , 'git version'       , getVersionFrom('git'       , '--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit requireAgent useXclip allMatches))
+    foreach my $flag (qw(enableGit useXclip allMatches))
     {
         if (! eval('$'.$flag))
         {
@@ -1750,7 +1745,6 @@ sub main
 
     if(gpgAgentRunning)
     {
-        $requireAgent = true;
         # Add --no-tty to gpg's parameter list to reduce its output and
         # require a gpg-agent.
         push(@gpg,'--no-tty');
