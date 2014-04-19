@@ -1,6 +1,7 @@
 Version 0.5
 - Now requires the user to manually run "gpgpwd upgrade" to upgrade a v1
     database to the v2 database used by gpgpwd 0.4 and later.
+- Removed --force-unsafe
 
 Version 0.4
   NOTE: The data format changes in 0.4 makes the password database unreadable

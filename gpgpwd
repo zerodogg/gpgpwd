@@ -43,7 +43,6 @@ my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --qu
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 2;
 my $enableGit        = false;
-my $forceUnsafe      = false;
 my $requireAgent     = false;
 my $useXclip         = true;
 my $verbosity        = 0;
@@ -669,11 +668,6 @@ sub upgradeDataV1toV2
         pDie('Your password database is a v2 file calming to be v1'."\n".
             'The password database may be corrupt. Upgrade aborted.'."\n");
     }
-    # Don't perform upgrades when --force-unsafe was passed
-    if ($forceUnsafe)
-    {
-        pDie('Refusing to upgrade when --force-unsafe is in effect.'."\n");
-    }
     # First perform a git pull
     if ($enableGit)
     {
@@ -773,32 +767,13 @@ sub loadData
     statusOut('(loading password database)');
     my($preV2,$data) = loadJSONStructure($path);
 
-    my $forceUnsafeMessage = "\n".'Ignoring this error may lead to data loss and corruption.'."\n".
-    'If you are sure that\'s what you want you may use --force-unsafe.'."\n";
-
     if (!defined $data->{pwds} || ref($data->{pwds}) ne 'HASH')
     {
-        if ($forceUnsafe)
-        {
-            warn('WARNING: Detected possible corruption in '.$path."\n".
-                'Continuing anyway because of --force-unsafe'."\n\n");
-        }
-        else
-        {
-            pDie('Detected possible corruption in '.$path.' - refusing to continue'."\n".$forceUnsafeMessage);
-        }
+        pDie('Detected possible corruption in '.$path.' - refusing to continue'."\n");
     }
     elsif(! defined($data->{gpgpwdDataVersion}))
     {
-        if ($forceUnsafe)
-        {
-            warn('Warning: '.$path.': does not specify data format version.'."\n".
-                'Continuing anyway because of --force-unsafe'."\n\n");
-        }
-        else
-        {
-            pDie($path.': does not specify data format version - refusing to continue'."\n".$forceUnsafeMessage);
-        }
+        pDie($path.': does not specify data format version - refusing to continue'."\n");
     }
     elsif($data->{gpgpwdDataVersion} eq '1')
     {
@@ -828,17 +803,8 @@ sub loadData
     }
     elsif ($data->{gpgpwdDataVersion} ne $dataVersion)
     {
-        if ($forceUnsafe)
-        {
-            warn($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
-                'This version only supports version '.$dataVersion.
-                'Continuing anyway because of --force-unsafe'."\n\n");
-        }
-        else
-        {
-            pDie($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
-                'This version only supports version '.$dataVersion.' - refusing to continue'."\n");
-        }
+        pDie($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
+            'This version only supports version '.$dataVersion.' - refusing to continue'."\n");
     }
 
     $data->{pwds} //= {};
@@ -877,20 +843,6 @@ sub writeData
     # the embedded passwords.
     $encoded = gpgIO(\@encodedSplit,[ qw(--clearsign --comment),'gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d' ], 1);
 
-    if ($forceUnsafe)
-    {
-        print "\n";
-        print 'Running in --force-unsafe mode. Press Control+C (^C) to cancel'."\n";
-        print 'the writing now, to avoid possible corruption.'."\n";
-        print 'Continuing in ';
-        foreach(reverse 1..10)
-        {
-            print $_.'... ';
-            sleep(1);
-        }
-        print 'writing file...'."\n\n";
-    }
-
     # Make a backup of the current file
     if (-e $path)
     {
@@ -912,16 +864,7 @@ sub writeData
         pDie('Fatal error: the size of "'.$path.'" is too small'."\n");
     }
 
-    if ($forceUnsafe)
-    {
-        warn('--force-unsafe in effect: will not delete backup file in case of corruption'."\n".
-            'Note: Backup files are overwritten each time gpgpwd makes changes, so to avoid'."\n".
-            'losing it, you should copy it somewhere safe. It is at '.$path.'~'."\n");
-    }
-    else
-    {
-        unlink($path.'~');
-    }
+    unlink($path.'~');
 
     git('push',$path);
 }
@@ -1648,7 +1591,7 @@ sub debugInfo
     printf($pattern , 'git version'       , getVersionFrom('git'       , '--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit forceUnsafe requireAgent useXclip allMatches))
+    foreach my $flag (qw(enableGit requireAgent useXclip allMatches))
     {
         if (! eval('$'.$flag))
         {
@@ -1712,11 +1655,6 @@ sub main
             pExit(0);
         },
         'v|verbose+' => \$verbosity,
-        'force-unsafe' => sub
-        {
-            warn('WARNING: Running in --force-unsafe mode. Data corruption may occur!'."\n");
-            $forceUnsafe = true;
-        },
         'p|password-file=s' => \$storagePath,
         'g|git|i|fast-git' => \$enableGit,
         'G|no-git' => \$noGit,
