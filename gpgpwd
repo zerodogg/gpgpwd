@@ -38,7 +38,7 @@ use constant {
     V_DEBUG => 3,
 };
 
-my $VERSION          = '0.4';
+my $VERSION          = '0.5';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
 my $dataVersion      = 2;
@@ -641,67 +641,52 @@ sub loadJSONStructure
 }
 
 # Purpose: Upgrade a v1 database file to v2
-# Usage: upgradeDataV1toV2($path,$data,$preV2);
-# $path is the path to the data file
-# $data is the data structure itself
-# $preV2 is the preV2 boolean as returned by loadJSONStructure
+# Usage: upgradeDataV1toV2();
 sub upgradeDataV1toV2
 {
-    my $path = shift;
-    my $data = shift;
-    my $preV2 = shift;
+    # Load the data
+    my($preV2,$data) = loadJSONStructure($storagePath);
+    # Check if the data has already been upgraded
+    if($data->{gpgpwdDataVersion} eq '2')
+    {
+        # If it is a preV2 file then someone has tampered with it
+        if ($preV2)
+        {
+            pDie('Your database file is a v1 file claiming to be v2'."\n".
+                'Someone has tampered with your database file. Upgrade aborted.'."\n");
+        }
+        else
+        {
+            print 'Your database has already been upgraded.'."\n";
+            pExit(0);
+        }
+    }
     # If we have seen V2+ data, but the file claims to be version 1 then
     # something is corrupt, so we abort to avoid performing multiple
     # conversions.
     if ($preV2 == 0)
     {
-        pDie('Upgrade triggered on V2-labelled file. The password database may be corrupt.'."\n");
+        pDie('Your password database is a v2 file calming to be v1'."\n".
+            'The password database may be corrupt. Upgrade aborted.'."\n");
     }
-    if ($enableGit)
-    {
-        print "Old data format detected, performing a git pull...\n";
-        git('pull',$storagePath);
-        print "Reloading data from git...\n";
-        ($preV2,$data) = loadJSONStructure($path);
-        if (!$preV2)
-        {
-            print "Data in git has been upgraded, continuing...\n";
-            return loadData($path);
-        }
-    }
-    # Clear the screen, if possible, to draw attention to the upgrade message
-    if(InPath('clear'))
-    {
-        system('clear');
-    }
-    # Loudly scream about the impending data upgrade
-    print "********************* DATA UPGRADE *********************\n";
-    print "* YOU SHOULD ONLY EVER SEE THIS MESSAGE ONCE.          *\n";
-    print "* IF YOU HAVE SEEN IT BEFORE, ABORT NOW WITH CONTROL+C *\n";
-    print "********************************************************\n";
-    print "\n";
-    print "About to upgrade the data format to version $dataVersion.\n";
-    print "If this has happened before someone has modified your database\n";
-    print "and the integrity of your password list may have been compromised.\n";
-    print "\n";
     # Don't perform upgrades when --force-unsafe was passed
     if ($forceUnsafe)
     {
         pDie('Refusing to upgrade when --force-unsafe is in effect.'."\n");
     }
-    # Sleep for 20 seconds before starting the upgrade
-    print 'Conversion starting in ';
-    for(my $r = 20; $r > 0; $r--)
+    # First perform a git pull
+    if ($enableGit)
     {
-        print $r;
-        sleep(1);
-        if(length($r) > 1)
+        print "First performing a git pull...\n";
+        git('pull',$storagePath);
+        print "Reloading data from git...\n";
+        ($preV2,$data) = loadJSONStructure($storagePath);
+        if (!$preV2)
         {
-            print "\b \b";
+            print "Data in git has been upgraded. Upgrade aborted\n";
+            pExit(0);
         }
-        print "\b";
     }
-    print "\r                          \r";
     print 'Converting ...';
     # Perform data conversion. Encrypts every password explicitly.
     foreach my $pwd (keys %{$data->{pwds}})
@@ -720,6 +705,7 @@ sub upgradeDataV1toV2
     # Write the data
     writeData($storagePath,$data);
     print "done\nVerifying integrity...";
+    # Verify the integrity of the upgraded data file
     try
     {
         # Check that the new data is larger than the old
@@ -760,7 +746,7 @@ sub upgradeDataV1toV2
         unlink($storagePath);
         move($storagePath.'.gpgpwdupgrade',$storagePath);
         # Push the restored file if needed
-        git('push',$path);
+        git('push',$storagePath);
         # Make sure pDie is set to its default mode
         $pDieUsepExit = 1;
         # Error out
@@ -769,8 +755,10 @@ sub upgradeDataV1toV2
             'This is likely a bug in gpgpwd.'."\n"
         );
     };
+    # Remove the backup
     unlink($storagePath.'.gpgpwdupgrade');
-    print "done - upgrade successfully completed\n\n";
+    print "done - upgrade successfully completed\n";
+    pExit(0);
 }
 
 # Purpose: Load the password database
@@ -814,7 +802,24 @@ sub loadData
     }
     elsif($data->{gpgpwdDataVersion} eq '1')
     {
-        upgradeDataV1toV2($path,$data,$preV2);
+        statusOut('');
+        if ($enableGit)
+        {
+            print "Old data format detected, performing a git pull...\n";
+            git('pull',$storagePath);
+            print "Reloading data from git...\n";
+            ($preV2,$data) = loadJSONStructure($path);
+            if (!$preV2)
+            {
+                print "Data in git has been upgraded, continuing...\n";
+                return loadData($path);
+            }
+        }
+        pDie('Your database file is using the old v1 format. It needs to be upgraded.'."\n".
+            'If you have already upgraded your database, then this means someone has '."\n".
+            'tampered with your file and the database may be compromised.'."\n\n".
+            'To upgrade the database run: gpgpwd upgrade'."\n"
+        );
     }
     elsif($data->{gpgpwdDataVersion} ne '1' && $preV2)
     {
@@ -1522,6 +1527,7 @@ sub usage
     printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
     printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
     printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
+    printHelp('' , 'upgrade'            , 'Upgrade an old database file to the new format if needed');
 
     if (defined $exitValue)
     {
@@ -1951,6 +1957,10 @@ sub main
 
         writeData($storagePath,$data);
     }
+    elsif($command eq 'upgrade')
+    {
+        upgradeDataV1toV2();
+    }
     else
     {
         if (@ARGV == 0)
@@ -2120,6 +2130,11 @@ Everything up until the first bit of whitespace is taken to be the name,
 and everything from the first non-whitespace character after that and
 until the end of the line is taken to be the password. It will ignore
 empty lines and lines starting with #.
+
+=item B<upgrade>
+
+Upgrades a database file using the old format (v1, used by gpgpwd 0.3 and
+older) to the new format (v2, used by gpgpwd 0.4 and later).
 
 =back
 
