@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 27;
+use Test::More tests => 38;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -19,15 +19,17 @@ t_expect('password listed below. Some commands are available, enter /help to lis
 t_expect('-re','Random password: .*','Random password');
 t_expect('Password> ','Password prompt');
 expect_send("1234567890\n");
+t_exitvalue(0,'Adding should succeed');
 
-t_wait_eof();
 ok(-e $testfile,'The file exists');
 
 eSpawn(qw(get testpassword));
 t_expect('testpassword        : 1234567890','Retrieve password');
+t_exitvalue(0,'Retrieval should succeed');
 
 eSpawn(qw(get testpwd));
 t_expect('testpassword        : 1234567890','Retrieve password with typos');
+t_exitvalue(0,'Retrieval with typos should succeed');
 
 eSpawn(qw(add testpassword));
 t_expect('An entry for testpassword already exists, with the password: 1234567890','Existing password');
@@ -37,25 +39,32 @@ t_expect('-re','Random password: .*','Random password');
 t_expect('Password> ','Password prompt for existing password');
 expect_send("abcdefghij\n");
 t_expect('Changed testpassword from 1234567890 to abcdefghij','Password change');
+t_exitvalue(0,'Changing a password should succeed');
 
 eSpawn(qw(add tsting));
 t_expect('Password> ','Password prompt for second password entry');
 expect_send("qwertyuio\n");
+t_exitvalue(0,'Adding a second password should succeed');
 
 eSpawn(qw(get tist));
 t_expect('tsting              : qwertyuio','Retrieve password fuzzy');
+t_exitvalue(0,'Getting a fuzzy password should succeed');
 
 eSpawn(qw(get testingpwd));
 t_expect('tsting              : qwertyuio','Retrieve password with typos');
+t_exitvalue(0,'Getting a password with typos should succeed');
 
 eSpawn(qw(get testingpassword));
 t_expect('testpassword        : abcdefghij','Retrieve password with too many letters');
+t_exitvalue(0,'Getting a password with too many letters should succeed');
 
 eSpawn(qw(rename testpassword renamed));
 t_expect('Renamed the entry for testpassword to renamed','Renaming entry');
+t_exitvalue(0,'Renaming should succeed');
 
 eSpawn(qw(get testpassword));
 t_expect('(no passwords found for "testpassword")','Fail to retrieve the renamed password');
+t_exitvalue(0,'Failing to find a match should succeed');
 
 eSpawn(qw(add anothertest));
 t_expect('Password> ','Password prompt before help');
@@ -70,6 +79,6 @@ t_expect('-re','Random password: \w{15}','Alphanumeric-only password');
 t_expect('Password> ','A new password prompt after /alphanumeric');
 expect_send("\n");
 t_expect('-re','^Using password: \S{15}','Using information');
+t_exitvalue(0,'Adding a new password should succeed');
 
-t_wait_eof();
 unlink($testfile);

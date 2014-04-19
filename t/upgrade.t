@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 3;
+use Test::More tests => 6;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -18,14 +18,14 @@ print {$o} '{ "pwds":{"mytestpassword":"gpgpwd"}, "gpgpwdDataVersion":1, "genera
 close($o);
 eSpawn(qw(get mytestpassword));
 t_expect('Your database file is using the old v1 format. It needs to be upgraded.','Upgrade message');
+t_exitvalue('nonzero','Should exit with nonzero when an upgrade is needed');
 
-t_wait_eof();
 eSpawn(qw(upgrade));
 t_expect('upgrade successfully completed','Upgrade completion');
+t_exitvalue(0,'The upgrade should succeed');
 
-t_wait_eof();
 eSpawn(qw(get mytestpassword));
 t_expect('mytestpassword      : gpgpwd','Retrieve password');
+t_exitvalue(0,'Retrieval of the password should succeed');
 
-t_wait_eof();
 unlink($testfile);

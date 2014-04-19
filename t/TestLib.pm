@@ -6,10 +6,26 @@ use Exporter qw(import);
 use Expect;
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
-our @EXPORT = qw(t_wait_eof t_expect eSpawn getCmd expect_send set_gpgpwd_database_path);
+our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path);
 
 our $e;
 our $testfile;
+
+sub t_exitvalue
+{
+    my $value = shift;
+    my $name = shift;
+    $e->expect(10,undef);
+    if ($value eq 'nonzero')
+    {
+        main::ok($e->exitstatus != 0, $name);
+    }
+    else
+    {
+        main::is($e->exitstatus,$value,$name);
+    }
+    $e = undef;
+}
 
 sub set_gpgpwd_database_path
 {
