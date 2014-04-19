@@ -56,4 +56,4 @@ distrib: clean test man
 	rm -f gpgpwd.1
 # Run tests
 test: sanity
-	@perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/gpgpwd.t
+	@perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
