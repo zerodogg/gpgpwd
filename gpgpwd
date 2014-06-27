@@ -170,6 +170,7 @@ sub toClipboard
         open(my $write,'|-','xclip','-in','-selection',$target,'-silent') or return '';
         print {$write} $value or return '';
         close($write) or printv(V_INFO,'Failed to close filehandle to xclip: '.$!."\n");
+        printv(V_DEBUG,'xclip instance started for '.$target."\n");
     }
     return ' (copied)';
 }
