@@ -267,6 +267,27 @@ sub gpgAgentRunning
     return;
 }
 
+# Purpose: Output a message to stderr or die, restoring STDERR first
+# Usage: reOut($stderr,die?,message);
+sub reOut
+{
+    my $stderr = shift;
+    my $die = shift;
+    my $message = shift;
+
+    open(my $storedErr,'>&',\*STDERR);
+    open(STDERR,'>&',$stderr);
+    if ($die)
+    {
+        pDie($message);
+    }
+    else
+    {
+        warn($message);
+    }
+    open(STDERR,'>&',$storedErr);
+}
+
 # Purpose: Write some data to gpg and return the output from gpg
 # Usage: gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
 # data is the data to be written to gpg
@@ -283,6 +304,19 @@ sub gpgIO
     my @commands         = @{$commandList};
 
     my $output;
+    my $stderr;
+    if (!$captureSTDERR)
+    {
+        open($stderr, '>&',\*STDERR);
+        # This is used to silence useless warnings from gnupg when using the
+        # gnome keyring daemon. It's not safe to do unless we are under gnome
+        # and have a DISPLAY. If we don't then we risk killing password
+        # prompts.
+        if(defined($ENV{DISPLAY}) && defined($ENV{XDG_CURRENT_DESKTOP}) && $ENV{XDG_CURRENT_DESKTOP} eq 'GNOME' && $verbosity <= 0)
+        {
+            open(STDERR,'>','/dev/null');
+        }
+    }
 
     # Autostart a gpg-agent for us if needed
     autoInitGPGAgent();
@@ -304,7 +338,7 @@ sub gpgIO
     if ($captureSTDERR)
     {
         printv(V_LOG,'Talking to gpg with open3: '.join(' ',@gpgCommand)."\n");
-        $pid = open3($in,$out,$err,@gpgCommand) or pDie('Failed to open3() up communication with gpg: '.$!."\n");
+        $pid = open3($in,$out,$err,@gpgCommand) or reOut($stderr,true,'Failed to open3() up communication with gpg: '.$!."\n");
         # Create an IO::Select handle that we use to query for pending data
         # on the STDOUT and STDERR filehandles
         $outputReader = IO::Select->new($out,$err);
@@ -313,7 +347,7 @@ sub gpgIO
     else
     {
         printv(V_LOG,'Talking to gpg with open2: '.join(' ',@gpgCommand)."\n");
-        $pid = open2($out,$in,@gpgCommand) or pDie('Failed to open2() up communication with gpg: '.$!."\n");
+        $pid = open2($out,$in,@gpgCommand) or reOut($stderr,true,'Failed to open2() up communication with gpg: '.$!."\n");
         # Create an IO::Select handle that we use to query for pending data
         # on the STDOUT filehandle
         $outputReader = IO::Select->new($out);
@@ -323,7 +357,7 @@ sub gpgIO
     {
         foreach my $l (@{$data})
         {
-            print {$in} $l."\n" or pDie('Failed to write data to gpg for output: '.$!."\n");
+            print {$in} $l."\n" or reOut($stderr,true,'Failed to write data to gpg for output: '.$!."\n");
             # Check if there is pending output data that we need to read
             while(my @handles = $outputReader->can_read(0))
             {
@@ -337,14 +371,12 @@ sub gpgIO
     # Dump the entire data string if we have one
     elsif(defined($data))
     {
-        print {$in} $data or pDie('Failed to write data to gpg for output: '.$!."\n");
+        print {$in} $data or reOut($stderr,true,'Failed to write data to gpg for output: '.$!."\n");
     }
     # Close the input filehandle
     if(defined($in))
     {
-        close($in) or do {
-            warn('Failed to close communication with gpg: '.$!."\n");
-        };
+        close($in) or reOut($stderr,false,'Failed to close communication with gpg: '.$!."\n");
     }
     # Read all pending output
     while(my @handles = $outputReader->can_read(120))
@@ -365,16 +397,17 @@ sub gpgIO
         }
     }
 
+    if (!$captureSTDERR)
+    {
+        open(STDERR,'>&',$stderr);
+    }
+
     # Close the output handle
-    close($out) or do {
-        warn('Failed to close communication with gpg: '.$!."\n");
-    };
+    close($out) or warn('Failed to close communication with gpg: '.$!."\n");
     # Close the stderr handle if needed
     if(defined($err))
     {
-        close($err) or do {
-            warn('Failed to close communication with gpg: '.$!."\n");
-        };
+        close($err) or warn('Failed to close communication with gpg: '.$!."\n");
     }
     # If we're not requiring an agent then gpg will output some messages. To
     # differenciate it from "our" output, encase it in a text block.
