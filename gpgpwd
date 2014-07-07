@@ -1277,10 +1277,10 @@ sub get
 
     my $entries = scalar(keys(%{ $matches }));
     my $entryNo = 0;
-    foreach my $entry (sort { $matches->{$b}->{score} <=> $matches->{$a}->{score} } keys %{$matches})
+    foreach my $entry (sort { $matches->{$a}->{score} <=> $matches->{$b}->{score} } keys %{$matches})
     {
         $entryNo++;
-        outputEntry($entry,$matches->{$entry}, $entryNo == $entries);
+        outputEntry($entry,$matches->{$entry}, $entryNo == 1);
     }
 }
 
