@@ -345,10 +345,18 @@ sub gpgIO
         $outputReader = IO::Select->new($out,$err);
     }
     # Use open2 to capture stdout
-    else
+    elsif(defined($data))
     {
         printv(V_LOG,'Talking to gpg with open2: '.join(' ',@gpgCommand)."\n");
         $pid = open2($out,$in,@gpgCommand) or reOut($stderr,true,'Failed to open2() up communication with gpg: '.$!."\n");
+        # Create an IO::Select handle that we use to query for pending data
+        # on the STDOUT filehandle
+        $outputReader = IO::Select->new($out);
+    }
+    else
+    {
+        printv(V_LOG,'Talking to gpg with open: '.join(' ',@gpgCommand)."\n");
+        $pid = open($out,'-|',@gpgCommand) or pDie('Failed to open() up communication with gpg: '.$!."\n");
         # Create an IO::Select handle that we use to query for pending data
         # on the STDOUT filehandle
         $outputReader = IO::Select->new($out);
