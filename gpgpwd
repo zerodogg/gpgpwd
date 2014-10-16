@@ -1614,6 +1614,8 @@ sub usage
     printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
     printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
     printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
+    printHelp('' , 'config'             , 'Retrieve or set settings in the gpgpwd config file');
+    printHelp('' , 'git'                , 'Perform git commands');
     printHelp('' , 'upgrade'            , 'Upgrade an old database file to the new format if needed');
 
     if (defined $exitValue)
@@ -1772,13 +1774,19 @@ sub ConfigLoader
 sub writeOutConfig
 {
     my $out = shift;
+    my $header = "gpgpwd configuration file\n# You can also use 'gpgpwd config' to alter this file";
+
+    if ($out)
+    {
+        $header = 'gpgpwd configuration';
+    }
     $out  //= $gpgpwdDir.'/gpgpwd.conf';
 
     return ConfigWriter($out, $config,
         {
-            'HEADER' => 'gpgpwd configuration file',
+            'HEADER'   => $header,
             'dataPath' => "The path to the password database file.\n# Use the special value DEFAULT for the default autodetected path",
-            git => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
+            git        => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
             'xclipMode' => "Configures which xclip mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both",
         });
 }
@@ -2508,10 +2516,15 @@ B<gpgpwd> is written by Eskild Hustvedt I<<code aatt zerodogg d0t org>>
 
 =over
 
-=item I<~/.gpgpwddb>
+=item I<~/.gpgpwd/gpgpwd.db>
 
 The default save location for the password database, overrideable by using
 I<--password-file>.
+
+=item I<~/.gpgpwd/gpgpwd.conf>
+
+The gpgpwd configraution file. Can also be managed using the 'gpgpwd config'
+command.
 
 =back
 
