@@ -41,7 +41,7 @@ use constant {
 
 my $VERSION          = '0.6';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
-my $gpgpwdDir        = $ENV{HOME}.'/.gpgpwd';
+my $gpgpwdDir;
 my $storagePath;
 my $dataVersion      = 2;
 my $enableGit        = false;
@@ -1795,6 +1795,11 @@ sub writeOutConfig
 sub initialize
 {
     my $upgrade = 0;
+
+    my $XDG_CDIR = $ENV{XDG_CONFIG_HOME};
+    $XDG_CDIR  //= $ENV{HOME}.'/.config';
+    $gpgpwdDir   = $XDG_CDIR.'/gpgpwd';
+
     my $defaultStoragePath = $gpgpwdDir.'/gpgpwd.db';
 
     if (! -d $gpgpwdDir)
@@ -2515,6 +2520,13 @@ B<gpgpwd> is written by Eskild Hustvedt I<<code aatt zerodogg d0t org>>
 =head1 FILES
 
 =over
+
+=item I<XDG_CONFIG_HOME/gpgpwd>
+
+The gpgpwd configuration and database directory. XDG_CONFIG_HOME is an
+environment variable specified by the XDG Base Directory Specification. The
+default value for XDG_CONFIG_HOME (and the value on most systems) is ~/.config,
+so on most systems this will be I<~/.config/gpgpwd>.
 
 =item I<~/.gpgpwd/gpgpwd.db>
 

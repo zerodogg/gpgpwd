@@ -1,6 +1,6 @@
 Version 0.6
-- Now has a config directory in ~/.gpgpwd
-- Moved password file to ~/.gpgpwd/gpgpwd.db
+- Now has a config directory in XDG_CONFIG_HOME/gpgpwd
+- Moved password file to gpgpwd.db in the config directory
     (symlink in place to the old file when upgrading for compatibility)
 - Added support for managing git within gpgpwd
 - Added a configuration file
