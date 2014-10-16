@@ -39,7 +39,7 @@ use constant {
     V_DEBUG => 3,
 };
 
-my $VERSION          = '0.5';
+my $VERSION          = '0.6';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir        = $ENV{HOME}.'/.gpgpwd';
 my $storagePath;
