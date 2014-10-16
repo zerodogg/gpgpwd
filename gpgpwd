@@ -1605,7 +1605,6 @@ sub usage
     printHelp('-g' , '--git'             , 'Use git to synchronize the password file (see the manpage for details)');
     printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
     printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
-    printHelp('-c' , '--xclip-clipboard' , 'Use the clipboard supplied instead of the default (see the manpage for details)');
     printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
     print "\n";
@@ -1780,6 +1779,7 @@ sub writeOutConfig
             'HEADER' => 'gpgpwd configuration file',
             'dataPath' => "The path to the password database file.\n# Use the special value DEFAULT for the default autodetected path",
             git => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
+            'xclipMode' => "Configures which xclip mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both",
         });
 }
 
@@ -1797,10 +1797,10 @@ sub initialize
         mkpath($gpgpwdDir);
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
+    $config = { dataPath => 'DEFAULT', git => 'auto', 'xclipMode' => 'clipboard' };
     if (!-e $gpgpwdDir.'/gpgpwd.conf')
     {
         print '.';
-        $config = { dataPath => 'DEFAULT', git => 'auto' };
         if ($storagePath || -e $ENV{HOME}.'/.gpgpwddb')
         {
             $config->{git} = 'false';
@@ -1830,6 +1830,25 @@ sub initialize
         # Compatibility symlink
         symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
         printv(V_LOG,'Migrated from legacy database location');
+    }
+    if (defined $config->{xclipMode})
+    {
+        if ($config->{xclipMode} eq 'both')
+        {
+            @clipboardTargets = qw(primary clipboard);
+        }
+        elsif($config->{xclipMode} eq 'clipboard')
+        {
+            @clipboardTargets = qw(clipboard);
+        }
+        elsif($config->{xclipMode} eq 'selection')
+        {
+            @clipboardTargets = qw(primary);
+        }
+        else
+        {
+            warn('Warning: Unknown value for xclipMode: '.$config->{xclipMode}."\n");
+        }
     }
     if ($upgrade)
     {
@@ -1966,6 +1985,10 @@ sub main
         {
             shift;
             my $value = shift;
+
+            print "Note: --xclip-clipboard is deprecated as of version 0.6\n";
+            print "      use the configuration setting xclipMode instead\n";
+            print "      The parameter will be removed in gpgpwd 0.7\n";
 
             if ($value eq 'both')
             {
@@ -2309,28 +2332,6 @@ Disables use of xclip(1). By default gpgpwd will copy passwords to the clipboard
 for easy pasting into password fields. When this option is supplied it supresses
 this behaviour.
 
-=item B<-c, --xclip-clipboard> I<CLIPBOARD>
-
-By default gpgpwd will copy passwords to the clipboard (the one that pastes through
-the usual I<ctrl+v> or "right click -> paste" means). With this you can change it.
-It accepts the following parameters as I<CLIPBOARD>:
-
-=over
-
-=item I<clipboard>
-
-The default, copies to the 'normal' clipboard. Paste with ie. I<ctrl+v>.
-
-=item I<selection>
-
-Copy to the 'selection' clipboard. Paste with ie. middle-click.
-
-=item I<both>
-
-Copy to both the 'normal' and 'selection' clipboards.
-
-=back
-
 =item B<--all>
 
 Return all posible results for a "get" request. This includes very fuzzy
@@ -2380,10 +2381,84 @@ and everything from the first non-whitespace character after that and
 until the end of the line is taken to be the password. It will ignore
 empty lines and lines starting with #.
 
+=item B<git>
+
+Provides certain git commands
+
+=over
+
+=item B<git init>
+
+Initialize a gpgpwd git repository
+
+=item B<git clone> I<git://compatible/url>
+
+Clone an existing gpgpwd git repository from the git URL supplied (supports all
+git URLs that your native git supports).
+
+=item B<git pull>, B<git fetch>, B<git remote>
+
+Provides access to the git commands of the same name for the gpgpwd git
+repository. See the manpages for the commands themselves for more
+information. To pass command-line parameters to git you must first supply --, ie.
+`gpgpwd fetch -- -v`
+
+=back
+
 =item B<upgrade>
 
 Upgrades a database file using the old format (v1, used by gpgpwd 0.3 and
 older) to the new format (v2, used by gpgpwd 0.4 and later).
+
+=item B<config>
+
+Manages the gpgpwd configuration file. Without any parameters it will output
+the current configuration. You may also supply a single configuration key
+to get the value for that key, or a key=value pair to set key to value.
+
+=back
+
+=head1 CONFIGURATION SETTINGS
+
+=over
+
+=item B<dataPath>
+
+The path to the gpgpwd password database file. You can also override this with
+I<--password-file> (ie. to temporarily operate on a different file).
+
+=item B<git>
+
+Configures the git mode for gpgpwd.
+
+Set to true to always enable.
+
+Set to auto to enable if the password file is in a directory contianing a
+.git-directory.
+
+Set to false to always disable.
+
+=item B<xclipMode>
+
+By default gpgpwd will copy passwords to the clipboard (the one that pastes through
+the usual I<ctrl+v> or "right click -> paste" means). With this you can change it.
+It accepts the following parameters:
+
+=over
+
+=item I<clipboard>
+
+The default, copies to the 'normal' clipboard. Paste with ie. I<ctrl+v>.
+
+=item I<selection>
+
+Copy to the 'selection' clipboard. Paste with ie. middle-click.
+
+=item I<both>
+
+Copy to both the 'normal' and 'selection' clipboards.
+
+=back
 
 =back
 
@@ -2407,11 +2482,6 @@ Remove test from the adatabase
 
 Add the password for testpwd to the database and commit+push the file using
 git afterwards.
-
-=item gpgpwd --xclip-clipboard both get testpwd
-
-Get the password for testpwd, copying it to both the selection and regular
-clipboards.
 
 =item gpgpwd rename testpwd test-password
 
