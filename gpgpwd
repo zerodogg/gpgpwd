@@ -40,7 +40,8 @@ use constant {
 
 my $VERSION          = '0.5';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
-my $storagePath      = $ENV{HOME}.'/.gpgpwddb';
+my $gpgpwdDir        = $ENV{HOME}.'/.gpgpwd';
+my $storagePath;
 my $dataVersion      = 2;
 my $enableGit        = false;
 my $useXclip         = true;
@@ -49,6 +50,7 @@ my $allMatches       = false;
 my $autoGPGAgent;
 my @clipboardTargets = qw(clipboard);
 my $pDieUsepExit     = 1;
+my $config           = {};
 
 # Purpose: print() wrapper that obeys $verbosity
 # Usage: printv(LEVEL, ...);
@@ -1410,7 +1412,7 @@ sub git
     }
 
     my $cwd = getcwd;
-    chdir(dirname(realpath($path)));
+    chdir(dirname($path));
 
     if ($command eq 'safepull')
     {
@@ -1551,6 +1553,147 @@ sub printHelp
     return true;
 }
 
+# Purpose: Write a configuration file
+# Usage: ConfigWriter(/path/to/file, \%Config, \%Descriptions);
+sub ConfigWriter
+{
+	my ($File, $Config, $Description) = @_;
+
+	# Open the config for writing
+	open(my $CONFIG, '>', $File) or do {
+		# If we can't then we error out, no need for failsafe stuff - it's just the config file
+		warn("Unable to save the configuration file $File: $!");
+		return(0);
+	};
+	if(defined($Description->{HEADER}))
+    {
+		print $CONFIG "# $Description->{HEADER}\n";
+	}
+	foreach(sort(keys(%{$Config})))
+    {
+		if(defined($Description->{$_}))
+        {
+			print $CONFIG "\n# $Description->{$_}";
+		}
+		print $CONFIG "\n$_=$Config->{$_}\n";
+	}
+	close($CONFIG);
+}
+
+# Purpose: Load a configuration file
+# Usage: ConfigLoader(/path/to/file, \%Config, \%OptionRegex, OnlyValidOptions?);
+#  OptionRegeXhash can be available for only a select few of the config options
+#  or skipped completely (by replacing it by undef).
+#  If OnlyValidOptions is true it will cause ConfigLoader to skip options not in
+#  the OptionRegexHash.
+sub ConfigLoader
+{
+	my ($File, $ConfigHash, $OptionRegex, $OnlyValidOptions) = @_;
+
+	open(my $CONFIG, '<', "$File") or do {
+		warn(sprintf('Unable to read the configuration settings from %s: %s', $File, $!));
+		return(0);
+	};
+	while(<$CONFIG>)
+    {
+		next if m/^\s*(#.*)?$/;
+		next if ! m/=/;
+		chomp;
+		my $Option = $_;
+		my $Value = $_;
+		$Option =~ s/^\s*(\S+)\s*=.*/$1/;
+		$Value =~ s/^\s*\S+\s*=\s*(.*)\s*/$1/;
+		if($OnlyValidOptions)
+        {
+			if(!defined($OptionRegex->{$Option}))
+            {
+				warn("Unknown configuration option \"$Option\" (=$Value) in $File: Ignored.");
+				next;
+			}
+		}
+		if(!defined($Value))
+        {
+			warn("Empty value for option $Option in $File");
+		}
+		if(defined($OptionRegex) and defined($OptionRegex->{$Option}))
+        {
+			my $MustMatch = $OptionRegex->{$Option};
+			if ($Value !~ /$MustMatch/)
+            {
+				warn("Invalid setting of $Option (=$Value) in the config file: Must match $OptionRegex->{Option}.");
+				next;
+			}
+		}
+		$ConfigHash->{$Option} = $Value;
+	}
+	close($CONFIG);
+}
+
+# Purpose: Write our config file
+sub writeOutConfig
+{
+    return ConfigWriter($gpgpwdDir.'/gpgpwd.conf', $config,
+        {
+            'HEADER' => 'gpgpwd configuration file',
+            'dataPath' => "The path to the password database file.\n# Use the special value DEFAULT for the default autodetected path",
+            git => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
+        });
+}
+
+# Purpose: Initialize environment if needed and load the config
+sub initialize
+{
+    my $upgrade = 0;
+    my $defaultStoragePath = $gpgpwdDir.'/gpgpwd.db';
+
+    if (! -d $gpgpwdDir)
+    {
+        $upgrade = 1;
+        $| = 1;
+        print "gpgpwd is upgrading...";
+        mkpath($gpgpwdDir);
+        printv(V_LOG,'Created '.$gpgpwdDir."\n");
+    }
+    if (!-e $gpgpwdDir.'/gpgpwd.conf')
+    {
+        print '.';
+        $config = { dataPath => 'DEFAULT', git => 'auto' };
+        if ($storagePath || -e $ENV{HOME}.'/.gpgpwddb')
+        {
+            $config->{git} = 'false';
+        }
+        writeOutConfig();
+    }
+    ConfigLoader($gpgpwdDir.'/gpgpwd.conf',$config);
+
+    if (!$storagePath)
+    {
+        if ($config->{dataPath} eq 'DEFAULT')
+        {
+            $storagePath = $defaultStoragePath;
+        }
+        else
+        {
+            $storagePath = $config->{dataPath};
+        }
+    }
+    # Resolve all levels of symlinks
+    $storagePath = realpath($storagePath);
+    if ($upgrade && !-e $defaultStoragePath && -e $ENV{HOME}.'/.gpgpwddb')
+    {
+        print '.';
+        $upgrade = 2;
+        move( $ENV{HOME}.'/.gpgpwddb', $defaultStoragePath ) or die("Failed to move old database ($ENV{HOME}/.gpgpwddb) to the new location at $defaultStoragePath: $!\n");
+        # Compatibility symlink
+        symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
+        printv(V_LOG,'Migrated from legacy database location');
+    }
+    if ($upgrade)
+    {
+        print "done\n\n";
+    }
+}
+
 # Purpose: Get the version of a shell utility
 # Usage: version = getVersionFrom('command');
 sub getVersionFrom
@@ -1651,6 +1794,7 @@ sub main
 
     my $noGit     = false;
     my $debugInfo = false;
+    my $force     = false;
 
     if (@ARGV == 0)
     {
@@ -1674,6 +1818,7 @@ sub main
         'G|no-git' => \$noGit,
         'debuginfo' => \$debugInfo,
         'C|no-xclip' => sub { $useXclip = false; },
+        'force' => \$force,
         'c|xclip-clipboard=s' => sub
         {
             shift;
@@ -1713,6 +1858,8 @@ sub main
         },
         'all' => \$allMatches,
     ) or pDie('See --help for more information'."\n");
+
+    initialize();
 
     my $command = shift(@ARGV);
 
