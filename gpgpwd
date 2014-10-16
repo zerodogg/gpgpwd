@@ -1552,6 +1552,41 @@ sub initGitRepo
     print "\nGit repository initialized in $gpgpwdDir/gitrepo\n";
 }
 
+# Purpose: Handle configuration changes (gpgpwd config)
+sub configCommand
+{
+    my $sub = shift;
+    my @commands = @_;
+
+    if (!defined $sub)
+    {
+        writeOutConfig(\*STDOUT);
+    }
+    else
+    {
+        if ($sub =~ /=/)
+        {
+            my ($key,$value) = split('=',$sub);
+            if (!defined $config->{$key})
+            {
+                print "$key is not a valid setting\n";
+                exit(1);
+            }
+            $config->{$key} = $value;
+            print "Set \"$key\" to \"$value\"\n";
+            writeOutConfig();
+        }
+        elsif(defined($config->{$sub}))
+        {
+            print $sub.'='.$config->{$sub}."\n";
+        }
+        else
+        {
+            print "No config setting for \"$sub\"\n";
+        }
+    }
+}
+
 # Purpose: Output our usage information and (optionally) exit
 # Usage: usage(N);
 #  If N is supplied, will pExit(N) after outputting.
@@ -1652,12 +1687,21 @@ sub ConfigWriter
 {
 	my ($File, $Config, $Description) = @_;
 
-	# Open the config for writing
-	open(my $CONFIG, '>', $File) or do {
-		# If we can't then we error out, no need for failsafe stuff - it's just the config file
-		warn("Unable to save the configuration file $File: $!");
-		return(0);
-	};
+    my $CONFIG;
+
+    if(ref($File) ne 'GLOB')
+    {
+        # Open the config for writing
+        open($CONFIG, '>', $File) or do {
+            # If we can't then we error out, no need for failsafe stuff - it's just the config file
+            warn("Unable to save the configuration file $File: $!");
+            return(0);
+        };
+    }
+    else
+    {
+        $CONFIG = $File;
+    }
 	if(defined($Description->{HEADER}))
     {
 		print $CONFIG "# $Description->{HEADER}\n";
@@ -1670,7 +1714,10 @@ sub ConfigWriter
 		}
 		print $CONFIG "\n$_=$Config->{$_}\n";
 	}
-	close($CONFIG);
+    if(ref($File) ne 'GLOB')
+    {
+        close($CONFIG);
+    }
 }
 
 # Purpose: Load a configuration file
@@ -1725,7 +1772,10 @@ sub ConfigLoader
 # Purpose: Write our config file
 sub writeOutConfig
 {
-    return ConfigWriter($gpgpwdDir.'/gpgpwd.conf', $config,
+    my $out = shift;
+    $out  //= $gpgpwdDir.'/gpgpwd.conf';
+
+    return ConfigWriter($out, $config,
         {
             'HEADER' => 'gpgpwd configuration file',
             'dataPath' => "The path to the password database file.\n# Use the special value DEFAULT for the default autodetected path",
@@ -2155,6 +2205,10 @@ sub main
     elsif($command eq 'git')
     {
         gitCommand($force,@ARGV);
+    }
+    elsif($command eq 'config')
+    {
+        configCommand(@ARGV);
     }
     else
     {
