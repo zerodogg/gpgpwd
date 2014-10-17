@@ -128,6 +128,7 @@ sub pExit
         kill('SIGINT',$GPGInfo[1]);
         printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
     }
+    # Restore backups if present
     if (defined $storagePath && -e $storagePath.'~' && ! -e $storagePath)
     {
         print 'Note: while exiting '.$storagePath.'~ existed, but '.$storagePath.' did not.'."\n";
@@ -262,7 +263,10 @@ sub gpgAgentRunning
 {
     if (defined($ENV{GPG_AGENT_INFO}) && length($ENV{GPG_AGENT_INFO}))
     {
+        # GPG_AGENT_INFO is a :-separated list of values. The first value is a path
+        # to the gpg-agent socket. The second is the PID of the agent.
         my @GPGInfo   = split(':',$ENV{GPG_AGENT_INFO});
+        # Make sure the gpg-agent socket exists, and that its process is alive
         if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
         {
             return 1;
@@ -590,6 +594,8 @@ sub verifyMetadataSignature
 sub loadJSONStructure
 {
     my $path = shift;
+
+    # If there's no file at $path we just return the default (empty) structure.
     if (!-e $path)
     {
         return (0, {
@@ -840,8 +846,8 @@ sub writeData
 
     my $encoded;
 
-    $content->{generator} = 'gpgpwd '.$VERSION.' - http://random.zerodogg.org/gpgpwd';
-    $content->{lastVersion} = $VERSION;
+    $content->{generator}         = 'gpgpwd '.$VERSION.' - http://random.zerodogg.org/gpgpwd';
+    $content->{lastVersion}       = $VERSION;
     $content->{gpgpwdDataVersion} = $dataVersion;
 
     try
@@ -937,7 +943,8 @@ sub loadFromFile
 # Purpose: Retrieve a simplistic "file ID" string for a file
 # Usage: id = getFileID(FILE);
 # The ID string is a very simple string combining the file size and
-# file change time.
+# file change time. If an older ID for the same file does not match
+# the current ID then the file has been changed.
 sub getFileID
 {
     my $file = shift;
@@ -961,10 +968,10 @@ sub set
     my $name = shift;
 
     my ($password, $copied);
-    my $alphaNumeric = 0;
+    my $alphaNumeric  = 0;
     my $defaultLength = 15;
-    my $length = $defaultLength;
-    my $readLine = Term::ReadLine->new('gpgpwd');
+    my $length        = $defaultLength;
+    my $readLine      = Term::ReadLine->new('gpgpwd');
     my $existing;
     if(defined $data->{pwds}->{$name})
     {
@@ -985,7 +992,7 @@ sub set
         # Generate a random password
         my $random = randomPwd($length,$alphaNumeric);
         # Copy it to the clipboard if needed
-        $copied = toClipboard($random);
+        $copied    = toClipboard($random);
         if (defined $existing)
         {
             print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
@@ -1118,17 +1125,23 @@ sub get
     my $fuzzySearch = 0;
     my $matches     = {};
 
+    # Loop that tries fuzzier and fuzzier matching for the requested NAME until
+    # it finds one that matches (or, if $allMatches is true, just keeps going
+    # through all of them).
     foreach my $fuzzy (0..10)
     {
         my $grantsStartEndBonus = true;
         my $pattern = $name;
 
+        # If we're doing a fuzzy match, remove all non-word characters to avoid
+        # problems in the regex
         if ($fuzzy > 1)
         {
             $pattern =~ s/\W//g;
         }
 
         my $regex;
+        # Compile the regex and verify its syntax
         if ($fuzzy == 0)
         {
             $regex = qr/$name/i or pDie('Failed to parse "'.$name.'" as a perl regular expression'."\n");
@@ -1308,14 +1321,20 @@ sub getMatches
     my $searchLength        = length($name);
     my $fuzzyNo             = $score;
 
+    # Iterate through all of the possible passwords, checking each if it
+    # matches the $regex. If it does we assign a numeric score to it, where a
+    # lower score means a more exact match.
     foreach my $key (sort keys %{$data->{pwds}})
     {
+        # Skip this check if it has already been matched
         next if defined $matches->{$key};
         if ($key =~ $regex)
         {
+            # Set the default score
             my $entryScore = $score;
             if ($key eq $name)
             {
+                # Grant a -5 bonus if it is an exact match
                 $entryScore -= 5;
             }
             else
@@ -1573,6 +1592,7 @@ sub configCommand
     my $sub = shift;
     my @commands = @_;
 
+    # We only support a single parameter
     if (@commands)
     {
         pDie("Too many parameters to \"gpgpwd config\"\n");
@@ -1580,10 +1600,13 @@ sub configCommand
 
     if (!defined $sub)
     {
+        # Dump the config to STDOUT
         writeOutConfig(\*STDOUT);
     }
     else
     {
+        # If a = character is in the input, treat it as a "assign this value to
+        # that setting" command
         if ($sub =~ /=/)
         {
             my ($key,$value) = split('=',$sub);
@@ -1710,6 +1733,7 @@ sub ConfigWriter
 
     my $CONFIG;
 
+    # If $File is already a filehandle then write directly to it
     if(ref($File) ne 'GLOB')
     {
         # Open the config for writing
@@ -1816,20 +1840,26 @@ sub initialize
 {
     my $upgrade = 0;
 
-    my $XDG_CDIR = $ENV{XDG_CONFIG_HOME};
-    $XDG_CDIR  //= $ENV{HOME}.'/.config';
-    $gpgpwdDir   = $XDG_CDIR.'/gpgpwd';
+    # Use XDG_CONFIG_HOME as per the XDG base directory specification
+    my $XDG_CONFIG_HOME = $ENV{XDG_CONFIG_HOME};
+    $XDG_CONFIG_HOME  //= $ENV{HOME}.'/.config';
+    # Our config dir
+    $gpgpwdDir   = $XDG_CONFIG_HOME.'/gpgpwd';
 
+    # The default location for the password database
     my $defaultStoragePath = $gpgpwdDir.'/gpgpwd.db';
 
+    # Create our config dir if needed
     if (! -d $gpgpwdDir)
     {
         $upgrade = 1;
+        # If a .gpgpwddb file exists then we are upgrading from gpgpwd <=0.5
         if (-e $ENV{HOME}.'/.gpgpwddb')
         {
             $upgrade = 2;
         }
         $| = 1;
+        # Output an upgrade message if upgrading from gpgpwd <=0.5
         if ($upgrade == 2)
         {
             print "gpgpwd is upgrading...";
@@ -1837,18 +1867,28 @@ sub initialize
         mkpath($gpgpwdDir);
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
+    # The default config
     $config = { dataPath => 'DEFAULT', git => 'auto', 'xclipMode' => 'clipboard' };
+    # If the config does not exist, write one
     if (!-e $gpgpwdDir.'/gpgpwd.conf')
     {
         print '.';
+        # For compatibility reasons when upgrading from old gpgpwd versions,
+        # set git to false
         if ($storagePath || -e $ENV{HOME}.'/.gpgpwddb')
         {
             $config->{git} = 'false';
         }
         writeOutConfig();
     }
-    ConfigLoader($gpgpwdDir.'/gpgpwd.conf',$config);
+    else
+    {
+        # Load the config file
+        ConfigLoader($gpgpwdDir.'/gpgpwd.conf',$config);
+    }
 
+    # If the user hasn't supplied a --password-file, use the one set in the
+    # config file
     if (!$storagePath)
     {
         if ($config->{dataPath} eq 'DEFAULT')
@@ -1865,10 +1905,13 @@ sub initialize
     {
         $storagePath = realpath($storagePath);
     }
+    # If we still don't have any storagePath, something has gone very wrong
     if (!defined $storagePath)
     {
         die('Failed to resolve storage path');
     }
+    # If we're upgrading, create a compatibility symlink to the old .gpgpwddb
+    # to stay backwards compatible
     if ($upgrade && !-e $defaultStoragePath && -e $ENV{HOME}.'/.gpgpwddb')
     {
         print '.';
@@ -1897,7 +1940,7 @@ sub initialize
             warn('Warning: Unknown value for xclipMode: '.$config->{xclipMode}."\n");
         }
     }
-    # Configure git
+    # Configure git according to the config
     if(defined $config->{git})
     {
         if ($config->{git} eq 'auto')
@@ -1912,6 +1955,7 @@ sub initialize
             $enableGit = true;
         }
     }
+    # Output a done message if we're upgrading from <=0.5
     if ($upgrade == 2)
     {
         print "done\n\n";
