@@ -1498,23 +1498,29 @@ sub initGitRepo
     my $force = shift;
     $| = 1;
     print "Initializing git:\n";
+    # Fresh means that we're creating the repo from scratch
     if ($fresh)
     {
+        # Abort if there's already a git repo in $storagePath
         if (-d dirname($storagePath).'/.git' && !$force)
         {
-            die('ERROR: '.$storagePath." appears to already live in git.\nRefusing to move to a new repository. Use --force to override."."\n");
+            pDie('ERROR: '.$storagePath." appears to already live in git.\nRefusing to move to a new repository. Use --force to override."."\n");
         }
+        # Abort if there's already a gitrepo directory in $gpgpwdDir
         if (-d $gpgpwdDir.'/gitrepo')
         {
-            die('ERROR: '.$gpgpwdDir.'/gitrepo appears to already exist. Refusing to overwrite.'."\nRemove this directory first if you wish to reinitialize.\n");
+            pDie('ERROR: '.$gpgpwdDir.'/gitrepo appears to already exist. Refusing to overwrite.'."\nRemove this directory first if you wish to reinitialize.\n");
         }
+        # Create the directory that will contain the git repo
         print "   creating path...";
-        mkpath($gpgpwdDir.'/gitrepo') or die("failed to create directory: $!\n");
+        mkpath($gpgpwdDir.'/gitrepo') or pDie("failed to create directory: $!\n");
         print "done\n";
         print "   moving data into repository...";
         if (-e $storagePath)
         {
-            move($storagePath,$gpgpwdDir.'/gitrepo') or die("failed to move data: $!\n");
+            # Move existing content into the repo directory
+            move($storagePath,$gpgpwdDir.'/gitrepo') or pDie("failed to move data: $!\n");
+            # Symlink the old path to the new path for compatibility
             symlink($gpgpwdDir.'/gitrepo/'.basename($storagePath),$storagePath) or warn('WARNING: failed to create symlink from old data path: '."$!\n");
             print "done\n";
         }
@@ -1525,6 +1531,7 @@ sub initGitRepo
         }
         print "   creating repository...";
         chdir($gpgpwdDir.'/gitrepo');
+        # This creates an initial git repository
         psystem('git','init','--quiet');
         psystem('git','add',basename($storagePath));
         psystem('git','commit','--quiet','-m','Initial commit');
@@ -1533,6 +1540,9 @@ sub initGitRepo
     else
     {
         print "   validating checkout...";
+        # Check that the password file exists in the repo. If it doesn't then
+        # that might indicate an invalid --password-file or that the user has
+        # checked out the wrong repository
         if ($storagePath ne $gpgpwdDir.'/'.basename($storagePath))
         {
             print "WARNING:\n";
@@ -1544,11 +1554,13 @@ sub initGitRepo
         {
             print "all good\n";
             print "   symlinking database...";
+            # Symlink the non-git database path to the git one
             symlink($gpgpwdDir.'/gitrepo/'.basename($storagePath),$gpgpwdDir.'/gpgpwd.db');
             print "done\n";
         }
     }
     print "   enabling git support in the config...";
+    # Make sure git=auto in the config
     $config->{git} = 'auto';
     writeOutConfig();
     print "done\n";
