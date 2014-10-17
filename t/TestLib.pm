@@ -6,10 +6,11 @@ use Exporter qw(import);
 use Expect;
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
-our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path);
+our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd);
 
 our $e;
 our $testfile;
+my $useRawCMD = 0;
 
 sub t_exitvalue
 {
@@ -30,6 +31,11 @@ sub t_exitvalue
 sub set_gpgpwd_database_path
 {
     $testfile = shift;
+}
+
+sub enable_raw_gpgpwd
+{
+    $useRawCMD = 1;
 }
 
 sub expect_send
@@ -81,6 +87,10 @@ sub getCmd
 {
     state $dir = dirname(realpath($0));
     no warnings;
+    if ($useRawCMD)
+    {
+        return ($dir.'/../gpgpwd',@_);
+    }
     return ($dir.'/../gpgpwd','--no-git','--password-file',$testfile,@_);
 }
 
