@@ -909,6 +909,27 @@ sub loadFromFile
     print 'Read '.$read.' entries from '.$file."\n";
 }
 
+# Purpose: Handle the batchadd command
+sub batchaddCommand
+{
+    my @params = @_;
+
+    if (!@params)
+    {
+        warn('Missing parameter to batchadd: path to the file to read'."\n");
+        usage(104);
+    }
+    elsif(@params != 1)
+    {
+        pDie('Too many parameters for "batchadd"'."\n");
+    }
+    git('pull',$storagePath);
+    my $data = loadData($storagePath);
+    statusOut('');
+    loadFromFile(shift(@params),$data);
+    writeData($storagePath,$data);
+}
+
 # = = = = = = = = = = = = = = = =
 # Password retrieval and setting
 # = = = = = = = = = = = = = = = =
@@ -1432,6 +1453,130 @@ sub outputEntry
 
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
     printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
+}
+
+# Purpose: Handle requests for passwords
+sub getPWCommand
+{
+    my @params = @ARGV;
+
+    if(! @params)
+    {
+        warn('Missing parameter to get: what to retrieve'."\n");
+        usage(103);
+    }
+    elsif(@params != 1)
+    {
+        pDie('Too many parameters for "get"'."\n");
+    }
+
+    my $data = loadData($storagePath);
+    getPasswords($data,@params);
+
+    if ($enableGit)
+    {
+        my $fileID = getFileID($storagePath);
+        git('safepull',$storagePath);
+        # If the file has changed due to the pull, then we re-fetch
+        if ($fileID ne getFileID($storagePath))
+        {
+            print "\n";
+            print "File updated by git, re-reading passwords:\n";
+            $data = loadData($storagePath);
+            getPasswords($data,@params);
+        }
+    }
+}
+
+# Purpose: Handle requests to remove passwords
+sub removePWCommand
+{
+    my @params = @_;
+
+    if (!@params)
+    {
+        warn('Missing parameter to remove: what to remove'."\n");
+        usage(104);
+    }
+    elsif(@params != 1)
+    {
+        pDie('Too many parameters for "remove"'."\n");
+    }
+    my $name = shift(@params);
+
+    git('pull',$storagePath);
+    my $data = loadData($storagePath);
+    statusOut('');
+    if ($data->{pwds}->{$name})
+    {
+        print 'Removed '.$name.' (with the password '.gpgDecryptString($data->{pwds}->{$name},true).')'."\n";
+        delete($data->{pwds}->{$name});
+    }
+    else
+    {
+        print 'No entry named '.$name.' found. Doing nothing.'."\n";
+        pExit(0);
+    }
+    writeData($storagePath,$data);
+}
+
+# Purpose: Handle requests to add a new password
+sub addPWCommand
+{
+    my $command = shift;
+    my @params  = @_;
+
+    if (!@params)
+    {
+        warn('Missing parameter to '.$command.': what to set'."\n");
+        usage(104);
+    }
+    elsif(@params != 1)
+    {
+        pDie('Too many parameters for "'.$command.'" (note that you will be prompted for a password)'."\n");
+    }
+    git('pull',$storagePath);
+    my $data = loadData($storagePath);
+    setPassword($data,@params);
+    writeData($storagePath,$data);
+}
+
+# Purpose: Handle requests to rename a password entry
+sub renamePWCommand
+{
+    my @params = @_;
+
+    my $old = shift(@params);
+    my $new = shift(@params);
+    if (!defined $old)
+    {
+        warn('Missing parameters to rename: old name, new name'."\n");
+        usage(104);
+    }
+    elsif (!defined $new)
+    {
+        warn('Missing parameters to rename: new name'."\n");
+        usage(104);
+    }
+    elsif(@params != 0)
+    {
+        pDie('Too many parameters for "rename"'."\n");
+    }
+    git('pull',$storagePath);
+    my $data = loadData($storagePath);
+    statusOut('');
+
+    my $entry = $data->{pwds}->{$old};
+    if (!defined $entry)
+    {
+        pDie('Failed to find "'.$old.'". Note that you must specify the exact name when'."\n".'using "rename", as it does no fuzzy searching'."\n");
+    }
+    $data->{pwds}->{$new} = $entry;
+    delete($data->{pwds}->{$old});
+
+    print 'Renamed the entry for '.$old.' to '.$new."\n";
+
+    writeData($storagePath,$data);
 }
 
 # = = = = = = =
@@ -1992,6 +2137,60 @@ sub initialize
     {
         print "done\n\n";
     }
+
+    # Make sure we've got gpg or gpg2
+    if (!InPath('gpg') && !InPath('gpg2'))
+    {
+        pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
+    }
+    elsif (
+            # If we don't have gpg(1) then we need to use gpg2
+            !InPath('gpg')
+            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
+            # if it is then enable gpg2-mode
+            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
+        )
+    {
+        # Note: If gpg isn't installed then we *know* gpg2 is installed,
+        # because if neither is installed we refuse to run at all (test at the
+        # top of main() )
+        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
+        $gpg[0] = 'gpg2';
+    }
+
+    # Verify that we're able to read and write to $storagePath, as well as
+    # the directory $storagePath is located in (for backup files).
+    if (-e $storagePath && ! -r $storagePath)
+    {
+        pDie($storagePath.': is not readable');
+    }
+    elsif (-e $storagePath && ! -w $storagePath)
+    {
+        pDie($storagePath.': is not writeable'."\n");
+    }
+    if ( ! -w dirname($storagePath) )
+    {
+        if (-e $storagePath)
+        {
+            warn('WARNING: '.dirname($storagePath).' is not writable, gpgpwd may be unable'."\n".'to create backup files!'."\n");
+        }
+        else
+        {
+            pDie(dirname($storagePath).': is not writeable'."\n");
+        }
+    }
+
+    if(gpgAgentRunning)
+    {
+        # Add --no-tty to gpg's parameter list to reduce its output and
+        # require a gpg-agent.
+        push(@gpg,'--no-tty');
+        # Explicitly enable the agent for gpg1
+        if ($gpg[0] ne 'gpg2')
+        {
+            push(@gpg,'--use-agent');
+        }
+    }
 }
 
 # Purpose: Get the version of a shell utility
@@ -2172,59 +2371,6 @@ sub main
         usage(0);
     }
 
-    if (!InPath('gpg') && !InPath('gpg2'))
-    {
-        pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
-    }
-    elsif (
-            # If we don't have gpg(1) then we need to use gpg2
-            !InPath('gpg')
-            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
-            # if it is then enable gpg2-mode
-            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
-        )
-    {
-        # Note: If gpg isn't installed then we *know* gpg2 is installed,
-        # because if neither is installed we refuse to run at all (test at the
-        # top of main() )
-        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
-        $gpg[0] = 'gpg2';
-    }
-
-    # Verify that we're able to read and write to $storagePath, as well as
-    # the directory $storagePath is located in (for backup files).
-    if (-e $storagePath && ! -r $storagePath)
-    {
-        pDie($storagePath.': is not readable');
-    }
-    elsif (-e $storagePath && ! -w $storagePath)
-    {
-        pDie($storagePath.': is not writeable'."\n");
-    }
-    if ( ! -w dirname($storagePath) )
-    {
-        if (-e $storagePath)
-        {
-            warn('WARNING: '.dirname($storagePath).' is not writable, gpgpwd may be unable'."\n".'to create backup files!'."\n");
-        }
-        else
-        {
-            pDie(dirname($storagePath).': is not writeable'."\n");
-        }
-    }
-
-    if(gpgAgentRunning)
-    {
-        # Add --no-tty to gpg's parameter list to reduce its output and
-        # require a gpg-agent.
-        push(@gpg,'--no-tty');
-        # Explicitly enable the agent for gpg1
-        if ($gpg[0] ne 'gpg2')
-        {
-            push(@gpg,'--use-agent');
-        }
-    }
-
     # Disable --git if --no-git was supplied
     if ($noGit)
     {
@@ -2237,127 +2383,23 @@ sub main
     }
     elsif ($command eq 'get')
     {
-        if(! @ARGV)
-        {
-            warn('Missing parameter to get: what to retrieve'."\n");
-            usage(103);
-        }
-        elsif(@ARGV != 1)
-        {
-            pDie('Too many parameters for "get"'."\n");
-        }
-
-        my $data = loadData($storagePath);
-        getPasswords($data,@ARGV);
-
-        if ($enableGit)
-        {
-            my $fileID = getFileID($storagePath);
-            git('safepull',$storagePath);
-            # If the file has changed due to the pull, then we re-fetch
-            if ($fileID ne getFileID($storagePath))
-            {
-                print "\n";
-                print "File updated by git, re-reading passwords:\n";
-                $data = loadData($storagePath);
-                getPasswords($data,@ARGV);
-            }
-        }
+        getPWCommand(@ARGV);
     }
     elsif($command eq 'batchadd')
     {
-        if (!@ARGV)
-        {
-            warn('Missing parameter to batchadd: path to the file to read'."\n");
-            usage(104);
-        }
-        elsif(@ARGV != 1)
-        {
-            pDie('Too many parameters for "batchadd"'."\n");
-        }
-        git('pull',$storagePath);
-        my $data = loadData($storagePath);
-        statusOut('');
-        loadFromFile(shift(@ARGV),$data);
-        writeData($storagePath,$data);
+        batchaddCommand(@ARGV);
     }
     elsif($command eq 'remove')
     {
-        if (!@ARGV)
-        {
-            warn('Missing parameter to remove: what to remove'."\n");
-            usage(104);
-        }
-        elsif(@ARGV != 1)
-        {
-            pDie('Too many parameters for "remove"'."\n");
-        }
-        my $name = shift(@ARGV);
-
-        git('pull',$storagePath);
-        my $data = loadData($storagePath);
-        statusOut('');
-        if ($data->{pwds}->{$name})
-        {
-            print 'Removed '.$name.' (with the password '.gpgDecryptString($data->{pwds}->{$name},true).')'."\n";
-            delete($data->{pwds}->{$name});
-        }
-        else
-        {
-            print 'No entry named '.$name.' found. Doing nothing.'."\n";
-            pExit(0);
-        }
-        writeData($storagePath,$data);
+        removePWCommand(@ARGV);
     }
     elsif($command eq 'set' || $command eq 'add' || $command eq 'change')
     {
-        if (!@ARGV)
-        {
-            warn('Missing parameter to '.$command.': what to set'."\n");
-            usage(104);
-        }
-        elsif(@ARGV != 1)
-        {
-            pDie('Too many parameters for "'.$command.'" (note that you will be prompted for a password)'."\n");
-        }
-        git('pull',$storagePath);
-        my $data = loadData($storagePath);
-        setPassword($data,@ARGV);
-        writeData($storagePath,$data);
+        addPWCommand($command,@ARGV);
     }
     elsif($command eq 'rename')
     {
-        my $old = shift(@ARGV);
-        my $new = shift(@ARGV);
-        if (!defined $old)
-        {
-            warn('Missing parameters to rename: old name, new name'."\n");
-            usage(104);
-        }
-        elsif (!defined $new)
-        {
-            warn('Missing parameters to rename: new name'."\n");
-            usage(104);
-        }
-        elsif(@ARGV != 0)
-        {
-            pDie('Too many parameters for "rename"'."\n");
-        }
-        git('pull',$storagePath);
-        my $data = loadData($storagePath);
-        statusOut('');
-
-        my $entry = $data->{pwds}->{$old};
-        if (!defined $entry)
-        {
-            pDie('Failed to find "'.$old.'". Note that you must specify the exact name when'."\n".'using "rename", as it does no fuzzy searching'."\n");
-        }
-        $data->{pwds}->{$new} = $entry;
-        delete($data->{pwds}->{$old});
-
-        print 'Renamed the entry for '.$old.' to '.$new."\n";
-
-        writeData($storagePath,$data);
+        renamePWCommand(@ARGV);
     }
     elsif($command eq 'upgrade')
     {
