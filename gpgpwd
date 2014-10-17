@@ -1813,8 +1813,15 @@ sub initialize
     if (! -d $gpgpwdDir)
     {
         $upgrade = 1;
+        if (-e $ENV{HOME}.'/.gpgpwddb')
+        {
+            $upgrade = 2;
+        }
         $| = 1;
-        print "gpgpwd is upgrading...";
+        if ($upgrade == 2)
+        {
+            print "gpgpwd is upgrading...";
+        }
         mkpath($gpgpwdDir);
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
@@ -1853,7 +1860,6 @@ sub initialize
     if ($upgrade && !-e $defaultStoragePath && -e $ENV{HOME}.'/.gpgpwddb')
     {
         print '.';
-        $upgrade = 2;
         move( $ENV{HOME}.'/.gpgpwddb', $defaultStoragePath ) or die("Failed to move old database ($ENV{HOME}/.gpgpwddb) to the new location at $defaultStoragePath: $!\n");
         # Compatibility symlink
         symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
@@ -1893,7 +1899,7 @@ sub initialize
             $enableGit = true;
         }
     }
-    if ($upgrade)
+    if ($upgrade == 2)
     {
         print "done\n\n";
     }
