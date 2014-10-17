@@ -19,7 +19,8 @@ endif
 BINDIR ?= $(prefix)/bin
 DATADIR ?= $(prefix)/share
 
-DISTFILES = COPYING gpgpwd INSTALL Makefile NEWS README.md gpgpwd.1 t
+CORE_DISTFILES = COPYING INSTALL Makefile NEWS README.md gpgpwd.1 t
+DISTFILES = $(CORE_DISTFILES) gpgpwd
 
 # Install gpgpwd
 install:
@@ -38,9 +39,11 @@ uninstall:
 # Clean up the tree
 clean:
 	rm -f `find|egrep '~$$'`
-	rm -f gpgpwd-*.tar.bz2
+	rm -f gpgpwd-*.tar.bz2 gpgpwd-*.tar.bz2.sig
 	rm -rf gpgpwd-$(VERSION)
-	rm -f gpgpwd.1
+	rm -rf gpgpwd-fat-$(VERSION)
+	rm -f gpgpwd.1 gpgpwd.fat
+	rm -rf fat-local fatlib
 # Verify syntax
 sanity:
 	@perl -c gpgpwd
@@ -53,7 +56,26 @@ distrib: clean test man
 	cp -r $(DISTFILES) ./gpgpwd-$(VERSION)
 	tar -jcvf gpgpwd-$(VERSION).tar.bz2 ./gpgpwd-$(VERSION)
 	rm -rf gpgpwd-$(VERSION)
+	rm -rf gpgpwd-fat-$(VERSION) 
 	rm -f gpgpwd.1
+	gpg --sign --detach-sign gpgpwd-$(VERSION).tar.bz2
+# Create a fat gpgpwd
+fat: buildfat testfat
+buildfat: 
+	cpanm -L fat-local Try::Tiny Term::ReadLine Term::ReadLine::Perl5 JSON::PP JSON App::FatPacker --notest
+	PERL5LIB="$(shell pwd)/fat-local/lib/perl5" PERL_RL="Perl" ./fat-local/bin/fatpack pack gpgpwd > gpgpwd.fat
+	chmod +x gpgpwd.fat
+testfat:
+	perl -c gpgpwd.fat
+	GPGPWD_TEST_BINNAME="gpgpwd.fat" make test
+fatdistrib: clean test man fat
+	mkdir -p gpgpwd-fat-$(VERSION)
+	cp -r $(DISTFILES) ./gpgpwd-fat-$(VERSION)
+	cp gpgpwd.fat gpgpwd-fat-$(VERSION)
+	tar -jcvf gpgpwd-fat-$(VERSION).tar.bz2 ./gpgpwd-fat-$(VERSION)
+	gpg --sign --detach-sign gpgpwd-fat-$(VERSION).tar.bz2
+	rm -rf fat-local fatlib
+	rm -f gpgpwd.fat gpgpwd.1
 # Run tests
 test: sanity
 	@perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
