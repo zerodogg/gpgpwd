@@ -1543,6 +1543,9 @@ sub initGitRepo
         else
         {
             print "all good\n";
+            print "   symlinking database...";
+            symlink($gpgpwdDir.'/gitrepo/'.basename($storagePath),$gpgpwdDir.'/gpgpwd.db');
+            print "done\n";
         }
     }
     print "   enabling git support in the config...";
