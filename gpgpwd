@@ -49,7 +49,7 @@ my $useXclip         = true;
 my $verbosity        = 0;
 my $allMatches       = false;
 my $autoGPGAgent;
-my @clipboardTargets = qw(clipboard);
+my @clipboardTargets;
 my $pDieUsepExit     = 1;
 my $config           = {};
 
@@ -1877,7 +1877,8 @@ sub initialize
         symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
         printv(V_LOG,'Migrated from legacy database location');
     }
-    if (defined $config->{xclipMode})
+    # Parse and configure the xclipMode set in the config file
+    if (defined $config->{xclipMode} && scalar(@clipboardTargets) == 0)
     {
         if ($config->{xclipMode} eq 'both')
         {
