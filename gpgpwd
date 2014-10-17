@@ -959,10 +959,10 @@ sub getFileID
 }
 
 # Purpose: Set a password value in the database
-# Usage: set($data,NAME);
+# Usage: setPassword($data,NAME);
 # $data is the data hashref
 # NAME is the name of the entry to add
-sub set
+sub setPassword
 {
     my $data = shift;
     my $name = shift;
@@ -1115,10 +1115,10 @@ sub getTypoOrMissingRegex
 }
 
 # Purpose: Get passwords from the database and output them to the user
-# Usage: get($data,NAME);
+# Usage: getPasswords($data,NAME);
 # $data is the data hashref
 # NAME is the regex to search for
-sub get
+sub getPasswords
 {
     my $data        = shift;
     my $name        = shift;
@@ -2216,7 +2216,7 @@ sub main
         }
 
         my $data = loadData($storagePath);
-        get($data,@ARGV);
+        getPasswords($data,@ARGV);
 
         if ($enableGit)
         {
@@ -2228,7 +2228,7 @@ sub main
                 print "\n";
                 print "File updated by git, re-reading passwords:\n";
                 $data = loadData($storagePath);
-                get($data,@ARGV);
+                getPasswords($data,@ARGV);
             }
         }
     }
@@ -2290,7 +2290,7 @@ sub main
         }
         git('pull',$storagePath);
         my $data = loadData($storagePath);
-        set($data,@ARGV);
+        setPassword($data,@ARGV);
         writeData($storagePath,$data);
     }
     elsif($command eq 'rename')
