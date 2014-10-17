@@ -1839,7 +1839,14 @@ sub initialize
         }
     }
     # Resolve all levels of symlinks
-    $storagePath = realpath($storagePath);
+    if (-e $storagePath)
+    {
+        $storagePath = realpath($storagePath);
+    }
+    if (!defined $storagePath)
+    {
+        die('Failed to resolve storage path');
+    }
     if ($upgrade && !-e $defaultStoragePath && -e $ENV{HOME}.'/.gpgpwddb')
     {
         print '.';
