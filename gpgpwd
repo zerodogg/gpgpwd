@@ -1484,7 +1484,7 @@ sub gitCommand
         }
         initGitRepo(0);
     }
-    elsif($subcommand eq 'remote' || $subcommand eq 'fetch')
+    elsif($subcommand eq 'remote' || $subcommand eq 'fetch' || $subcommand eq 'branch')
     {
         chdir(dirname($storagePath));
         psystem('git',$subcommand,@params);
@@ -2439,7 +2439,7 @@ Initialize a gpgpwd git repository
 Clone an existing gpgpwd git repository from the git URL supplied (supports all
 git URLs that your native git supports).
 
-=item B<git pull>, B<git fetch>, B<git remote>
+=item B<git pull>, B<git fetch>, B<git remote>, B<git branch>
 
 Provides access to the git commands of the same name for the gpgpwd git
 repository. See the manpages for the commands themselves for more
