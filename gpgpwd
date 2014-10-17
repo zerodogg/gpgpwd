@@ -72,6 +72,7 @@ sub printv
         printf('[gpgpwd %-5s] ',$prefixes[$level]);
         print @_;
     }
+    return 1;
 }
 
 # Purpose: Outputs a status message during initialization
@@ -95,6 +96,7 @@ sub statusOut
         print "\r$message";
         $prevLength = length($message);
     }
+    return 1;
 }
 
 # Purpose: system() wrapper that outputs the command if $verbosity >= V_LOG
@@ -139,6 +141,7 @@ sub reOut
         warn($message);
     }
     open(STDERR,'>&',$storedErr);
+    return 1;
 }
 
 # = = = = = = =
@@ -202,7 +205,7 @@ sub autoInitGPGAgent
 {
     if (defined($autoGPGAgent))
     {
-        return;
+        return 1;
     }
     elsif(!gpgAgentRunning())
     {
@@ -241,6 +244,7 @@ sub autoInitGPGAgent
         printv(V_DEBUG,'Not autostarting gpg-agent: already appears to be running'."\n");
         $autoGPGAgent = -1;
     }
+    return 1;
 }
 
 # Purpose: Check if a gpg agent is running
@@ -553,6 +557,7 @@ sub verifyMetadataSignature
 
     # Switch LC_ALL back to the user value
     $ENV{LC_ALL} = $LC_ALL;
+    return 1;
 }
 
 # Purpose: Retrieve the JSON structure stored in the password database
@@ -859,6 +864,7 @@ sub writeData
     unlink($path.'~');
 
     git('push',$path);
+    return 1;
 }
 
 # Purpose: Load a list of passwords from a simple file
@@ -907,6 +913,7 @@ sub loadFromFile
     # Failing to close is not much of a problem, so just log it.
     close($in) or printv(V_INFO,'Failed to close filehandle: '.$!."\n");;
     print 'Read '.$read.' entries from '.$file."\n";
+    return 1;
 }
 
 # Purpose: Handle the batchadd command
@@ -928,6 +935,7 @@ sub batchaddCommand
     statusOut('');
     loadFromFile(shift(@params),$data);
     writeData($storagePath,$data);
+    return 1;
 }
 
 # = = = = = = = = = = = = = = = =
@@ -1233,6 +1241,8 @@ sub getPasswords
         $entryNo++;
         outputEntry($entry,$matches->{$entry}, $entryNo == 1);
     }
+
+    return 1;
 }
 
 # Purpose: Get data entries that match a given regex
@@ -1431,6 +1441,8 @@ sub setPassword
         print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
     }
     $data->{pwds}->{$name} = gpgEncryptString($password,true);
+
+    return 1;
 }
 
 # Purpose: Output a password
@@ -1453,6 +1465,8 @@ sub outputEntry
 
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
     printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
+
+    return 1;
 }
 
 # Purpose: Handle requests for passwords
@@ -1486,6 +1500,8 @@ sub getPWCommand
             getPasswords($data,@params);
         }
     }
+
+    return 1;
 }
 
 # Purpose: Handle requests to remove passwords
@@ -1518,6 +1534,8 @@ sub removePWCommand
         pExit(0);
     }
     writeData($storagePath,$data);
+
+    return 1;
 }
 
 # Purpose: Handle requests to add a new password
@@ -1539,6 +1557,8 @@ sub addPWCommand
     my $data = loadData($storagePath);
     setPassword($data,@params);
     writeData($storagePath,$data);
+
+    return 1;
 }
 
 # Purpose: Handle requests to rename a password entry
@@ -1577,6 +1597,8 @@ sub renamePWCommand
     print 'Renamed the entry for '.$old.' to '.$new."\n";
 
     writeData($storagePath,$data);
+
+    return 1;
 }
 
 # = = = = = = =
@@ -1646,6 +1668,8 @@ sub git
     }
 
     chdir($cwd);
+
+    return 1;
 }
 
 # Purpose: Handle 'gpgpwd git'
@@ -1677,6 +1701,8 @@ sub gitCommand
         chdir(dirname($storagePath));
         psystem('git',$subcommand,@params);
     }
+
+    return 1;
 }
 
 # Purpose: Initialize git
@@ -1753,6 +1779,8 @@ sub initGitRepo
     writeOutConfig();
     print "done\n";
     print "\nGit repository initialized in $gpgpwdDir/gitrepo\n";
+
+    return 1;
 }
 
 # = = = = = = = = = = = =
@@ -1801,6 +1829,8 @@ sub configCommand
             print "No config setting for \"$sub\"\n";
         }
     }
+
+    return 1;
 }
 
 # Purpose: Write a configuration file
@@ -1841,6 +1871,8 @@ sub ConfigWriter
     {
         close($CONFIG);
     }
+
+    return 1;
 }
 
 # Purpose: Load a configuration file
@@ -1890,6 +1922,8 @@ sub ConfigLoader
 		$ConfigHash->{$Option} = $Value;
 	}
 	close($CONFIG);
+
+    return 1;
 }
 
 # Purpose: Write our config file
@@ -1952,6 +1986,8 @@ sub usage
     {
         pExit($exitValue);
     }
+
+    return 1;
 }
 
 # Purpose: Print formatted --help output
@@ -2191,6 +2227,8 @@ sub initialize
             push(@gpg,'--use-agent');
         }
     }
+
+    return 1;
 }
 
 # Purpose: Get the version of a shell utility
