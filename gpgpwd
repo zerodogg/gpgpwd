@@ -1875,6 +1875,21 @@ sub initialize
             warn('Warning: Unknown value for xclipMode: '.$config->{xclipMode}."\n");
         }
     }
+    # Configure git
+    if(defined $config->{git})
+    {
+        if ($config->{git} eq 'auto')
+        {
+            if (-d dirname($storagePath).'/.git')
+            {
+                $enableGit = true;
+            }
+        }
+        elsif ($config->{git} eq 'true')
+        {
+            $enableGit = true;
+        }
+    }
     if ($upgrade)
     {
         print "done\n\n";
