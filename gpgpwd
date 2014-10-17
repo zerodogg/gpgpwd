@@ -1726,10 +1726,10 @@ sub initGitRepo
             pDie('ERROR: '.$gpgpwdDir.'/gitrepo appears to already exist. Refusing to overwrite.'."\nRemove this directory first if you wish to reinitialize.\n");
         }
         # Create the directory that will contain the git repo
-        print "   creating path...";
+        print '   creating path...';
         mkpath($gpgpwdDir.'/gitrepo') or pDie("failed to create directory: $!\n");
         print "done\n";
-        print "   moving data into repository...";
+        print '   moving data into repository...';
         if (-e $storagePath)
         {
             # Move existing content into the repo directory
@@ -1743,7 +1743,7 @@ sub initGitRepo
             print "(no data to move)\n";
             printv(V_DEBUG,$storagePath.': did not exist'."\n");
         }
-        print "   creating repository...";
+        print '   creating repository...';
         chdir($gpgpwdDir.'/gitrepo');
         # This creates an initial git repository
         psystem('git','init','--quiet');
@@ -1753,7 +1753,7 @@ sub initGitRepo
     }
     else
     {
-        print "   validating checkout...";
+        print '   validating checkout...';
         # Check that the password file exists in the repo. If it doesn't then
         # that might indicate an invalid --password-file or that the user has
         # checked out the wrong repository
@@ -1767,13 +1767,13 @@ sub initGitRepo
         else
         {
             print "all good\n";
-            print "   symlinking database...";
+            print '   symlinking database...';
             # Symlink the non-git database path to the git one
             symlink($gpgpwdDir.'/gitrepo/'.basename($storagePath),$gpgpwdDir.'/gpgpwd.db');
             print "done\n";
         }
     }
-    print "   enabling git support in the config...";
+    print '   enabling git support in the config...';
     # Make sure git=auto in the config
     $config->{git} = 'auto';
     writeOutConfig();
@@ -2075,7 +2075,7 @@ sub initialize
         # Output an upgrade message if upgrading from gpgpwd <=0.5
         if ($upgrade == 2)
         {
-            print "gpgpwd is upgrading...";
+            print 'gpgpwd is upgrading...';
         }
         mkpath($gpgpwdDir);
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
@@ -2307,14 +2307,14 @@ sub debugInfo
     }
     printf($pattern,'flags',$flags);
 
-    eval('use Digest::MD5;');
+    eval('use Digest::MD5;1;') or die('Failed to load Digest::MD5: '.$@."\n");
     my $md5 = Digest::MD5->new();
     my $self = $0;
     if(not -f $self)
     {
         $self = InPath($self);
     }
-    open(my $f,'<',$self);
+    open(my $f,'<',$self) or die('Failed to open self for reading: '.$!."\n");
     $md5->addfile($f);
     my $digest = $md5->hexdigest;
     close($f);
