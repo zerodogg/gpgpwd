@@ -53,6 +53,10 @@ my @clipboardTargets;
 my $pDieUsepExit     = 1;
 my $config           = {};
 
+# = = = = = = = = =
+# Message helpers
+# = = = = = = = = =
+
 # Purpose: print() wrapper that obeys $verbosity
 # Usage: printv(LEVEL, ...);
 # LEVEL is one of the V_* constants, ... are the normal print() parameters
@@ -116,6 +120,31 @@ sub pDie
     pExit(254);
 }
 
+# Purpose: Output a message to stderr or die, restoring STDERR first
+# Usage: reOut($stderr,die?,message);
+sub reOut
+{
+    my $stderr = shift;
+    my $die = shift;
+    my $message = shift;
+
+    open(my $storedErr,'>&',\*STDERR);
+    open(STDERR,'>&',$stderr);
+    if ($die)
+    {
+        pDie($message);
+    }
+    else
+    {
+        warn($message);
+    }
+    open(STDERR,'>&',$storedErr);
+}
+
+# = = = = = = =
+# Core helpers
+# = = = = = = =
+
 # Purpose: Wrapper around exit that restores backups if needed
 # Usage: Same as exit()
 sub pExit
@@ -145,70 +174,27 @@ sub InPath
     foreach (split ':', $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return false;
 }
 
-# Purpose: Copy a string to the clipboard if possible
-# Usage: $info = toClipboard(VALUE);
-# VALUE is the value to copy to the clipboard
-# toClipboard returns a string, which is empty if nothing was done and '
-# (copied)' if something was copied to the clipboard.
-sub toClipboard
+# Purpose: Retrieve a simplistic "file ID" string for a file
+# Usage: id = getFileID(FILE);
+# The ID string is a very simple string combining the file size and
+# file change time. If an older ID for the same file does not match
+# the current ID then the file has been changed.
+sub getFileID
 {
-    my $value        = shift;
-    if (!$useXclip)
+    my $file = shift;
+    if (! -e $file || ! -r $file)
     {
-        return '';
+        pDie('Unable to read '.$file."\n");
     }
-    if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
-    {
-        if(InPath('xclip'))
-        {
-            printv(V_LOG,'Use of xclip disabled: no DISPLAY set'."\n");
-        }
-        else
-        {
-            printv(V_LOG,'Use of xclip disabled: not installed'."\n");
-        }
-        return '';
-    }
-    foreach my $target (@clipboardTargets)
-    {
-        open(my $write,'|-','xclip','-in','-selection',$target,'-silent') or return '';
-        print {$write} $value or return '';
-        close($write) or printv(V_INFO,'Failed to close filehandle to xclip: '.$!."\n");
-        printv(V_DEBUG,'xclip instance started for '.$target."\n");
-    }
-    return ' (copied)';
+    my $ID = -s $file;
+    $ID .= '|';
+    $ID .= (stat($file))[9];
+    return $ID;
 }
 
-# Purpose: Get a random password
-# Usage: $randomPwd = randomPwd(length = 15, alphaNumOnly = false);
-sub randomPwd
-{
-    my $length = shift;
-    my $alphaNumOnly = shift;
-    $length  //= 15;
-    while(1)
-    {
-        my $pwd = '';
-        # These characters are chosen specifically because they are usually selectable in
-        # a terminal by simply double-clicking on the string.
-        my @chars = ('a'..'z','A'..'Z',0..9);
-        if (!$alphaNumOnly)
-        {
-            push(@chars,',','.','/','?','%','&','#',':','_','=','+','@','~');
-        }
-        while(length($pwd) < $length)
-        {
-            $pwd .= $chars[ rand scalar @chars ];
-        }
-        # Require a password to have at least one number, one lower- and one
-        # upper-case character, and one non-word (symbol) character
-        if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && ($alphaNumOnly || $pwd =~ /\W/))
-        {
-            return $pwd;
-        }
-        # Password not accepted, try again
-    }
-}
+# = = = = = = = = = = = = = = = = = = =
+# Encryption and general GPG functions
+# = = = = = = = = = = = = = = = = = = =
 
 # Purpose: Check for gpg-agent and start one if needed
 # Usage: autoInitGPGAgent()
@@ -273,27 +259,6 @@ sub gpgAgentRunning
         }
     }
     return;
-}
-
-# Purpose: Output a message to stderr or die, restoring STDERR first
-# Usage: reOut($stderr,die?,message);
-sub reOut
-{
-    my $stderr = shift;
-    my $die = shift;
-    my $message = shift;
-
-    open(my $storedErr,'>&',\*STDERR);
-    open(STDERR,'>&',$stderr);
-    if ($die)
-    {
-        pDie($message);
-    }
-    else
-    {
-        warn($message);
-    }
-    open(STDERR,'>&',$storedErr);
 }
 
 # Purpose: Write some data to gpg and return the output from gpg
@@ -487,6 +452,10 @@ sub gpgEncryptString
     # Return raw data
     return $output;
 }
+
+# = = = = = = = = = = =
+# Data format handling
+# = = = = = = = = = = =
 
 # Purpose: Verify metadata signature
 # Usage: verifyMetadataSignature(PATH,Data)
@@ -940,136 +909,73 @@ sub loadFromFile
     print 'Read '.$read.' entries from '.$file."\n";
 }
 
-# Purpose: Retrieve a simplistic "file ID" string for a file
-# Usage: id = getFileID(FILE);
-# The ID string is a very simple string combining the file size and
-# file change time. If an older ID for the same file does not match
-# the current ID then the file has been changed.
-sub getFileID
+# = = = = = = = = = = = = = = = =
+# Password retrieval and setting
+# = = = = = = = = = = = = = = = =
+
+# Purpose: Copy a string to the clipboard if possible
+# Usage: $info = toClipboard(VALUE);
+# VALUE is the value to copy to the clipboard
+# toClipboard returns a string, which is empty if nothing was done and '
+# (copied)' if something was copied to the clipboard.
+sub toClipboard
 {
-    my $file = shift;
-    if (! -e $file || ! -r $file)
+    my $value        = shift;
+    if (!$useXclip)
     {
-        pDie('Unable to read '.$file."\n");
+        return '';
     }
-    my $ID = -s $file;
-    $ID .= '|';
-    $ID .= (stat($file))[9];
-    return $ID;
+    if (!InPath('xclip') || !(defined($ENV{DISPLAY}) && length($ENV{DISPLAY})))
+    {
+        if(InPath('xclip'))
+        {
+            printv(V_LOG,'Use of xclip disabled: no DISPLAY set'."\n");
+        }
+        else
+        {
+            printv(V_LOG,'Use of xclip disabled: not installed'."\n");
+        }
+        return '';
+    }
+    foreach my $target (@clipboardTargets)
+    {
+        open(my $write,'|-','xclip','-in','-selection',$target,'-silent') or return '';
+        print {$write} $value or return '';
+        close($write) or printv(V_INFO,'Failed to close filehandle to xclip: '.$!."\n");
+        printv(V_DEBUG,'xclip instance started for '.$target."\n");
+    }
+    return ' (copied)';
 }
 
-# Purpose: Set a password value in the database
-# Usage: setPassword($data,NAME);
-# $data is the data hashref
-# NAME is the name of the entry to add
-sub setPassword
+# Purpose: Get a random password
+# Usage: $randomPwd = randomPwd(length = 15, alphaNumOnly = false);
+sub randomPwd
 {
-    my $data = shift;
-    my $name = shift;
-
-    my ($password, $copied);
-    my $alphaNumeric  = 0;
-    my $defaultLength = 15;
-    my $length        = $defaultLength;
-    my $readLine      = Term::ReadLine->new('gpgpwd');
-    my $existing;
-    if(defined $data->{pwds}->{$name})
-    {
-        $existing = gpgDecryptString($data->{pwds}->{$name},true);
-    }
-    statusOut('');
-
-    # Loop to retreive the password
+    my $length = shift;
+    my $alphaNumOnly = shift;
+    $length  //= 15;
     while(1)
     {
-        # If $password is defined then this is a second-or-later iteration
-        # through the loop
-        if(defined $password)
+        my $pwd = '';
+        # These characters are chosen specifically because they are usually selectable in
+        # a terminal by simply double-clicking on the string.
+        my @chars = ('a'..'z','A'..'Z',0..9);
+        if (!$alphaNumOnly)
         {
-            print "\n";
+            push(@chars,',','.','/','?','%','&','#',':','_','=','+','@','~');
         }
-        my $prompt = 'Password> ';
-        # Generate a random password
-        my $random = randomPwd($length,$alphaNumeric);
-        # Copy it to the clipboard if needed
-        $copied    = toClipboard($random);
-        if (defined $existing)
+        while(length($pwd) < $length)
         {
-            print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
-            print 'Enter the password you want to change it to, or press enter to use the random'."\n";
+            $pwd .= $chars[ rand scalar @chars ];
         }
-        else
+        # Require a password to have at least one number, one lower- and one
+        # upper-case character, and one non-word (symbol) character
+        if ($pwd =~ /\d+/ && $pwd =~ /[A-Z]/ && $pwd =~ /[a-z]/ && ($alphaNumOnly || $pwd =~ /\W/))
         {
-            print 'Enter the password you want to use, or press enter to use the random'."\n";
+            return $pwd;
         }
-        print 'password listed below. Some commands are available, enter /help to list them'."\n";
-        print 'Random password: '.$random.$copied."\n";
-        $password = $readLine->readline('Password> ');
-        # If a user sends EOF, just go through the loop again
-        if (!defined $password)
-        {
-            print "\n";
-            next;
-        }
-        chomp $password;
-        if (!length $password)
-        {
-            $password = $random;
-            if (!defined $existing)
-            {
-                print "Using password: $random\n";
-            }
-            last;
-        }
-        # Output help text
-        elsif(index($password,'/help') == 0)
-        {
-            print "\n";
-            print "The following commands are available:\n";
-            printHelp('','/help','Display this help screen');
-            printHelp('','/alphanumeric','Generate an alphanumeric password (a password with only letters and numbers, without any symbols');
-            printHelp('','/regenerate','Regenerate a new password (with symbols, letters and numbers)');
-            print "Both /alphanumeric and /regenerate can take a single parameter,\n";
-            print "the length of the password to be generated. Ie. /alphanumeric 15\n";
-            print "will generate a 15-character long alphanumeric password\n";
-        }
-        # Generate a alphanumeric-only password
-        elsif(index($password,'/alphanumeric') == 0)
-        {
-            $alphaNumeric = 1;
-        }
-        # Generate a new password
-        elsif(index($password,'/regenerate') == 0)
-        {
-            $alphaNumeric = 0;
-        }
-        else
-        {
-            last;
-        }
-        # Handle a length-parameter supplied to /regenerate or /alphanumeric
-        if ($password =~ s{^/(regenerate|alphanumeric)\s+(\d+)\s*}{$2})
-        {
-            if ($password < 0 && $password > 1000)
-            {
-                print 'The password length must be higher than zero'."\n";
-            }
-            else
-            {
-                $length = $password;
-            }
-        }
-        else
-        {
-            $length = $defaultLength;
-        }
+        # Password not accepted, try again
     }
-
-    if(defined $existing)
-    {
-        print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
-    }
-    $data->{pwds}->{$name} = gpgEncryptString($password,true);
 }
 
 # Purpose: Get a fuzzy regexp for simple typos or missing characters
@@ -1392,6 +1298,120 @@ sub getMatches
     return $matches;
 }
 
+# Purpose: Set a password value in the database
+# Usage: setPassword($data,NAME);
+# $data is the data hashref
+# NAME is the name of the entry to add
+sub setPassword
+{
+    my $data = shift;
+    my $name = shift;
+
+    my ($password, $copied);
+    my $alphaNumeric  = 0;
+    my $defaultLength = 15;
+    my $length        = $defaultLength;
+    my $readLine      = Term::ReadLine->new('gpgpwd');
+    my $existing;
+    if(defined $data->{pwds}->{$name})
+    {
+        $existing = gpgDecryptString($data->{pwds}->{$name},true);
+    }
+    statusOut('');
+
+    # Loop to retreive the password
+    while(1)
+    {
+        # If $password is defined then this is a second-or-later iteration
+        # through the loop
+        if(defined $password)
+        {
+            print "\n";
+        }
+        my $prompt = 'Password> ';
+        # Generate a random password
+        my $random = randomPwd($length,$alphaNumeric);
+        # Copy it to the clipboard if needed
+        $copied    = toClipboard($random);
+        if (defined $existing)
+        {
+            print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
+            print 'Enter the password you want to change it to, or press enter to use the random'."\n";
+        }
+        else
+        {
+            print 'Enter the password you want to use, or press enter to use the random'."\n";
+        }
+        print 'password listed below. Some commands are available, enter /help to list them'."\n";
+        print 'Random password: '.$random.$copied."\n";
+        $password = $readLine->readline('Password> ');
+        # If a user sends EOF, just go through the loop again
+        if (!defined $password)
+        {
+            print "\n";
+            next;
+        }
+        chomp $password;
+        if (!length $password)
+        {
+            $password = $random;
+            if (!defined $existing)
+            {
+                print "Using password: $random\n";
+            }
+            last;
+        }
+        # Output help text
+        elsif(index($password,'/help') == 0)
+        {
+            print "\n";
+            print "The following commands are available:\n";
+            printHelp('','/help','Display this help screen');
+            printHelp('','/alphanumeric','Generate an alphanumeric password (a password with only letters and numbers, without any symbols');
+            printHelp('','/regenerate','Regenerate a new password (with symbols, letters and numbers)');
+            print "Both /alphanumeric and /regenerate can take a single parameter,\n";
+            print "the length of the password to be generated. Ie. /alphanumeric 15\n";
+            print "will generate a 15-character long alphanumeric password\n";
+        }
+        # Generate a alphanumeric-only password
+        elsif(index($password,'/alphanumeric') == 0)
+        {
+            $alphaNumeric = 1;
+        }
+        # Generate a new password
+        elsif(index($password,'/regenerate') == 0)
+        {
+            $alphaNumeric = 0;
+        }
+        else
+        {
+            last;
+        }
+        # Handle a length-parameter supplied to /regenerate or /alphanumeric
+        if ($password =~ s{^/(regenerate|alphanumeric)\s+(\d+)\s*}{$2})
+        {
+            if ($password < 0 && $password > 1000)
+            {
+                print 'The password length must be higher than zero'."\n";
+            }
+            else
+            {
+                $length = $password;
+            }
+        }
+        else
+        {
+            $length = $defaultLength;
+        }
+    }
+
+    if(defined $existing)
+    {
+        print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
+    }
+    $data->{pwds}->{$name} = gpgEncryptString($password,true);
+}
+
 # Purpose: Output a password
 # Usage: outputEntry(KEY,VALUE,COPY);
 # KEY is the title
@@ -1413,6 +1433,10 @@ sub outputEntry
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
     printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
 }
+
+# = = = = = = =
+# GIT handling
+# = = = = = = =
 
 # Purpose: Perform git actions
 # Usage: git(ACTION,PATH);
@@ -1586,6 +1610,10 @@ sub initGitRepo
     print "\nGit repository initialized in $gpgpwdDir/gitrepo\n";
 }
 
+# = = = = = = = = = = = =
+# Configuration handling
+# = = = = = = = = = = = =
+
 # Purpose: Handle configuration changes (gpgpwd config)
 sub configCommand
 {
@@ -1628,101 +1656,6 @@ sub configCommand
             print "No config setting for \"$sub\"\n";
         }
     }
-}
-
-# Purpose: Output our usage information and (optionally) exit
-# Usage: usage(N);
-#  If N is supplied, will pExit(N) after outputting.
-sub usage
-{
-    my $exitValue = shift;
-
-    print "\n";
-    print 'USAGE: '.basename($0).' [OPTIONS]? [COMMAND] [PARAMETERS]'."\n";
-    print "\n";
-    print "Options:\n";
-    printHelp(''   , '--help'            , 'View this help screen');
-    printHelp(''   , '--version'         , 'Display version information and exit');
-    printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
-    printHelp('-p' , '--password-file'   , 'Save passwords to this file instead of ~/.gpgpwddb');
-    printHelp('-g' , '--git'             , 'Use git to synchronize the password file (see the manpage for details)');
-    printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
-    printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
-    printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
-    printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
-    print "\n";
-    print "Commands:\n";
-    printHelp('' , 'get [name]'         , 'Get password for [name] (where [name] can be a perl-compatible regular expression)');
-    printHelp('' , 'set [name]'         , 'Add or change password for [name]');
-    printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
-    printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
-    printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
-    printHelp('' , 'config'             , 'Retrieve or set settings in the gpgpwd config file');
-    printHelp('' , 'git'                , 'Perform git commands');
-    printHelp('' , 'upgrade'            , 'Upgrade an old database file to the new format if needed');
-
-    if (defined $exitValue)
-    {
-        pExit($exitValue);
-    }
-}
-
-# Purpose: Print formatted --help output
-# Usage: printHelp('-shortoption', '--longoption', 'description');
-#  Description will be reformatted to fit within a normal terminal
-sub printHelp
-{
-    # The short option
-    my $short = shift,
-    # The long option
-    my $long = shift;
-    # The description
-    my $desc = shift;
-    # The generated description that will be printed in the end
-    my $GeneratedDesc;
-    # The current line of the description
-    my $currdesc = '';
-    # The maximum length any line can be
-    my $maxlen = 80;
-    # The length the options take up
-    my $optionlen = 20;
-    # Check if the short/long are LONGER than optionlen, if so, we need
-    # to do some additional magic to take up only $maxlen.
-    # The +1 here is because we always add a space between them, no matter what
-    if ((length($short) + length($long) + 1) > $optionlen)
-    {
-        $optionlen = length($short) + length($long) + 1;
-    }
-    # Split the description into lines
-    foreach my $part (split(' ',$desc))
-    {
-        if(defined $GeneratedDesc)
-        {
-            if ((length($currdesc) + length($part) + 1 + 24) > $maxlen)
-            {
-                $GeneratedDesc .= "\n";
-                $currdesc = '';
-            }
-            else
-            {
-                $currdesc .= ' ';
-                $GeneratedDesc .= ' ';
-            }
-        }
-        $currdesc .= $part;
-        $GeneratedDesc .= $part;
-    }
-    # Something went wrong
-    pDie('Option mismatch') if not $GeneratedDesc;
-    # Print it all
-    foreach my $description (split("\n",$GeneratedDesc))
-    {
-        printf "%-4s %-19s %s\n", $short,$long,$description;
-        # Set short and long to '' to ensure we don't print the options twice
-        $short = '';$long = '';
-    }
-    # Succeed
-    return true;
 }
 
 # Purpose: Write a configuration file
@@ -1833,6 +1766,105 @@ sub writeOutConfig
             git        => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
             'xclipMode' => "Configures which xclip mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both",
         });
+}
+
+# = = = = = = = = = = = = = = = = = = = = = = =
+# Base initialization and command-line parsing
+# = = = = = = = = = = = = = = = = = = = = = = =
+
+# Purpose: Output our usage information and (optionally) exit
+# Usage: usage(N);
+#  If N is supplied, will pExit(N) after outputting.
+sub usage
+{
+    my $exitValue = shift;
+
+    print "\n";
+    print 'USAGE: '.basename($0).' [OPTIONS]? [COMMAND] [PARAMETERS]'."\n";
+    print "\n";
+    print "Options:\n";
+    printHelp(''   , '--help'            , 'View this help screen');
+    printHelp(''   , '--version'         , 'Display version information and exit');
+    printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
+    printHelp('-p' , '--password-file'   , 'Save passwords to this file instead of ~/.gpgpwddb');
+    printHelp('-g' , '--git'             , 'Use git to synchronize the password file (see the manpage for details)');
+    printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
+    printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
+    printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
+    printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
+    print "\n";
+    print "Commands:\n";
+    printHelp('' , 'get [name]'         , 'Get password for [name] (where [name] can be a perl-compatible regular expression)');
+    printHelp('' , 'set [name]'         , 'Add or change password for [name]');
+    printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
+    printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
+    printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
+    printHelp('' , 'config'             , 'Retrieve or set settings in the gpgpwd config file');
+    printHelp('' , 'git'                , 'Perform git commands');
+    printHelp('' , 'upgrade'            , 'Upgrade an old database file to the new format if needed');
+
+    if (defined $exitValue)
+    {
+        pExit($exitValue);
+    }
+}
+
+# Purpose: Print formatted --help output
+# Usage: printHelp('-shortoption', '--longoption', 'description');
+#  Description will be reformatted to fit within a normal terminal
+sub printHelp
+{
+    # The short option
+    my $short = shift,
+    # The long option
+    my $long = shift;
+    # The description
+    my $desc = shift;
+    # The generated description that will be printed in the end
+    my $GeneratedDesc;
+    # The current line of the description
+    my $currdesc = '';
+    # The maximum length any line can be
+    my $maxlen = 80;
+    # The length the options take up
+    my $optionlen = 20;
+    # Check if the short/long are LONGER than optionlen, if so, we need
+    # to do some additional magic to take up only $maxlen.
+    # The +1 here is because we always add a space between them, no matter what
+    if ((length($short) + length($long) + 1) > $optionlen)
+    {
+        $optionlen = length($short) + length($long) + 1;
+    }
+    # Split the description into lines
+    foreach my $part (split(' ',$desc))
+    {
+        if(defined $GeneratedDesc)
+        {
+            if ((length($currdesc) + length($part) + 1 + 24) > $maxlen)
+            {
+                $GeneratedDesc .= "\n";
+                $currdesc = '';
+            }
+            else
+            {
+                $currdesc .= ' ';
+                $GeneratedDesc .= ' ';
+            }
+        }
+        $currdesc .= $part;
+        $GeneratedDesc .= $part;
+    }
+    # Something went wrong
+    pDie('Option mismatch') if not $GeneratedDesc;
+    # Print it all
+    foreach my $description (split("\n",$GeneratedDesc))
+    {
+        printf "%-4s %-19s %s\n", $short,$long,$description;
+        # Set short and long to '' to ensure we don't print the options twice
+        $short = '';$long = '';
+    }
+    # Succeed
+    return true;
 }
 
 # Purpose: Initialize environment if needed and load the config
