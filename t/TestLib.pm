@@ -87,11 +87,16 @@ sub getCmd
 {
     state $dir = dirname(realpath($0));
     no warnings;
+    my $binName = 'gpgpwd';
+    if ($ENV{GPGPWD_TEST_BINNAME})
+    {
+        $binName = $ENV{GPGPWD_TEST_BINNAME};
+    }
     if ($useRawCMD)
     {
-        return ($dir.'/../gpgpwd',@_);
+        return ($dir.'/../'.$binName,@_);
     }
-    return ($dir.'/../gpgpwd','--no-git','--password-file',$testfile,@_);
+    return ($dir.'/../'.$binName,'--no-git','--password-file',$testfile,@_);
 }
 
 1;
