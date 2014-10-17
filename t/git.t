@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 30;
+use Test::More tests => 34;
 use File::Temp qw(tempdir);
 use FindBin;
 use Cwd qw(realpath);
@@ -77,9 +77,19 @@ eSpawn('git','remote');
 t_expect('origin','Origin remote should exist');
 t_exitvalue(0,'git remote command should succeed');
 
+eSpawn('git','branch');
+t_expect('master','master branch should exist');
+t_exitvalue(0,'git branch command should succeed');
+
 # Should be able to retrieve the password from upstream
 eSpawn(qw(--no-xclip get testpassword));
 t_expect('testpassword        : 1234567890','Retrieve old password');
 t_expect('File updated by git, re-reading passwords:','Should re-read the password list due to git');
 t_expect('testpassword        : 12x4567890','Retrieve new password');
 t_exitvalue(0,'Retrieval command should succeed');
+
+eSpawn('git','pull');
+t_exitvalue(0,'git pull should succeed');
+
+eSpawn('git','fetch','master');
+t_exitvalue(0,'git fetch master should succeed');
