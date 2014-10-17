@@ -128,7 +128,7 @@ sub pExit
         kill('SIGINT',$GPGInfo[1]);
         printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
     }
-    if (-e $storagePath.'~' && ! -e $storagePath)
+    if (defined $storagePath && -e $storagePath.'~' && ! -e $storagePath)
     {
         print 'Note: while exiting '.$storagePath.'~ existed, but '.$storagePath.' did not.'."\n";
         print 'Restored backup copy to '.$storagePath."\n";
@@ -1558,6 +1558,11 @@ sub configCommand
     my $sub = shift;
     my @commands = @_;
 
+    if (@commands)
+    {
+        pDie("Too many parameters to \"gpgpwd config\"\n");
+    }
+
     if (!defined $sub)
     {
         writeOutConfig(\*STDOUT);
@@ -1570,7 +1575,7 @@ sub configCommand
             if (!defined $config->{$key})
             {
                 print "$key is not a valid setting\n";
-                exit(1);
+                pExit(1);
             }
             $config->{$key} = $value;
             print "Set \"$key\" to \"$value\"\n";
