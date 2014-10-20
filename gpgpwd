@@ -2342,6 +2342,7 @@ sub debugInfo
     print "\n";
     my $pattern = "%-28s: %s\n";
     printf($pattern , 'Data file'         , $storagePath);
+    printf($pattern , 'Config directory'  , $gpgpwdDir);
     printf($pattern , 'Data version'      , $dataVersion);
     printf($pattern , 'Perl version'      , sprintf('%vd', $^V));
     my $gpgV = getVersionFrom('gpg'       , '--version');
@@ -2377,6 +2378,13 @@ sub debugInfo
         $flags .= ' autoGPGAgent';
     }
     printf($pattern,'flags',$flags);
+
+    my $conf = '';
+    foreach my $c (sort keys %{$config})
+    {
+        $conf .= $c.'='.$config->{$c}.' ';
+    }
+    printf($pattern,'config',$conf);
 
     eval('use Digest::MD5;1;') or die('Failed to load Digest::MD5: '.$@."\n");
     my $md5 = Digest::MD5->new();
