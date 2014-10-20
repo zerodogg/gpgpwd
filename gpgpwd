@@ -1936,6 +1936,13 @@ sub writeOutConfig
     {
         $header = 'gpgpwd configuration';
     }
+    else
+    {
+        if ($config->{_override})
+        {
+            die('Fatal: Refusing to write configuration file when --set has been used'."\n");
+        }
+    }
     $out  //= $gpgpwdDir.'/gpgpwd.conf';
 
     return ConfigWriter($out, $config,
@@ -1965,9 +1972,8 @@ sub usage
     printHelp(''   , '--help'            , 'View this help screen');
     printHelp(''   , '--version'         , 'Display version information and exit');
     printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
-    printHelp('-p' , '--password-file'   , 'Save passwords to this file instead of ~/.gpgpwddb');
-    printHelp('-g' , '--git'             , 'Use git to synchronize the password file (see the manpage for details)');
-    printHelp('-G' , '--no-git'          , 'Disable git mode (overriding --git)');
+    printHelp('-p' , '--password-file'   , 'Override the configured password file');
+    printHelp('-s' , '--set [<key>=<value>]' , 'Temporarily override the configuration setting <key> to <value>');
     printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
     printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
@@ -2051,6 +2057,7 @@ sub printHelp
 # Purpose: Initialize environment if needed and load the config
 sub initialize
 {
+    my $configOverride = shift;
     my $upgrade = 0;
 
     # Use XDG_CONFIG_HOME as per the XDG base directory specification
@@ -2098,6 +2105,13 @@ sub initialize
     {
         # Load the config file
         ConfigLoader($gpgpwdDir.'/gpgpwd.conf',$config);
+    }
+
+    # Enable config overrides if needed
+    foreach my $k (keys(%{$configOverride}))
+    {
+        $config->{$k} = $configOverride->{$k};
+        $config->{_override} = 1;
     }
 
     # If the user hasn't supplied a --password-file, use the one set in the
@@ -2333,9 +2347,9 @@ sub main
 {
     $| = true;
 
-    my $noGit     = false;
     my $debugInfo = false;
     my $force     = false;
+    my $configOverride = {};
 
     if (@ARGV == 0)
     {
@@ -2355,11 +2369,31 @@ sub main
         },
         'v|verbose+' => \$verbosity,
         'p|password-file=s' => \$storagePath,
-        'g|git|i|fast-git' => \$enableGit,
-        'G|no-git' => \$noGit,
         'debuginfo' => \$debugInfo,
         'C|no-xclip' => sub { $useXclip = false; },
         'force' => \$force,
+        's|set=s' => sub {
+            shift;
+            my $kv = shift;
+            my($key,$value) = split(/=/,$kv);
+            $configOverride->{$key} = $value;
+        },
+        'G|no-git' => sub
+        {
+            die('Fatal: --no-git has been removed as of version 0.6. Use --set git=false instead.'."\n".
+                'NOTE : Unlike --no-git, when using --set only the last option will be used.'."\n".
+                '      (--no-git would previously override --git no matter where it appeared on'."\n".
+                '       the command-line)'."\n");
+        },
+        'g|git|i|fast-git' => sub
+        {
+            print "Note: --git is deprecated as of version 0.6\n";
+            print "      use the configuration setting git instead\n";
+            print "      The parameter will be removed in gpgpwd 0.7\n";
+            print "      Alternative: --set git=true\n\n";
+
+            $configOverride->{git} = 'true';
+        },
         'c|xclip-clipboard=s' => sub
         {
             shift;
@@ -2368,55 +2402,24 @@ sub main
             print "Note: --xclip-clipboard is deprecated as of version 0.6\n";
             print "      use the configuration setting clipboardMode instead\n";
             print "      The parameter will be removed in gpgpwd 0.7\n";
+            print "      Alternative: --set clipboardMode=$value\n";
 
-            if ($value eq 'both')
-            {
-                @clipboardTargets = qw(primary clipboard);
-            }
-            elsif($value eq 'clipboard')
-            {
-                @clipboardTargets = qw(clipboard);
-            }
-            elsif($value eq 'selection')
-            {
-                @clipboardTargets = qw(primary);
-            }
-            else
-            {
-                pDie('Unknown value for --xclip-cilpboard: '.$value."\n");
-            }
-        },
-        'r|require-agent' => sub
-        {
-            print 'Note: --require-agent is a no-op as of version 0.4'."\n";
-        },
-        'R|no-require-agent' => sub
-        {
-            print 'Note: --no-require-agent is a no-op as of version 0.4'."\n";
-        },
-        'T|t|try-require-agent' => sub
-        {
-            print 'Note: --try-require-agent is the default as of version 0.4'."\n";
-        },
-        'disable-agent' => sub {
-            print 'Note: --disable-agent is a no-op as of version 0.4. The agent is required.'."\n";
+            $configOverride->{'clipboardMode'} = $value;
         },
         'all' => \$allMatches,
+        'r|R|t|T|require-agent|no-require-agent|try-require-agent|disable-agent' => sub
+        {
+            print 'Note: --*-agent parameters are no-ops as of version 0.4 The agent is required.'."\n";
+        },
     ) or pDie('See --help for more information'."\n");
 
-    initialize();
+    initialize($configOverride);
 
     my $command = shift(@ARGV);
 
     if (!$command && !$debugInfo)
     {
         usage(0);
-    }
-
-    # Disable --git if --no-git was supplied
-    if ($noGit)
-    {
-        $enableGit   = false;
     }
 
     if ($debugInfo)
@@ -2525,28 +2528,10 @@ gpgpwd reads and writes the password database.
 You may supply several --password-file arguments, but only the last one
 will be used.
 
-=item B<-g, --git>
+=item B<-s, --set> I<<key>>=I<<value>>
 
-Enables git(1) mode. This can be used to keep a password database in sync
-between several different computers.  This causes gpgpwd to I<git pull> before
-it writes any change to the file, and I<git commit> and I<git push> after a
-change has been made. In read mode it will I<git pull> after getting a
-password, if it detects that the password file has changed after pulling,
-gpgpwd will process your get request again, in case the password you wanted has
-changed.
-
-It requires you to configure a git repository that contains your password file,
-and a central server that gpgpwd can push to and pull from. You will need to
-initialize and set up the git repository yourself. You will either need to use
-I<--password-file> to provide the path to the file in your git repository, or
-symlink I<~/.gpgpwddb> to the password file located in your git repository.
-
-=item B<-G, --no-git>
-
-Disables git(1) mode. This will override any --git parameters that you have
-specified. This can be useful if you have a shell alias that adds --git to
-the default gpgpwd parameters, but you want to operate on a different
---password-file that is not in git.
+Temporarily sets I<<key>> to I<<value>> for the duration of a single gpgpwd
+command. Using I<--set> temporarily disables the I<config> subcommand.
 
 =item B<-C, --no-xclip>
 
@@ -2611,7 +2596,14 @@ Provides certain git commands
 
 =item B<git init>
 
-Initialize a gpgpwd git repository
+Initialize a gpgpwd git repository.
+
+This can be used to keep a password database in sync between several different
+computers.  This causes gpgpwd to I<git pull> before it writes any change to
+the file, and I<git commit> and I<git push> after a change has been made. In
+read mode it will I<git pull> after getting a password, if it detects that the
+password file has changed after pulling, gpgpwd will process your get request
+again, in case the password you wanted has changed.
 
 =item B<git clone> I<git://compatible/url>
 
