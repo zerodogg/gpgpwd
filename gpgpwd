@@ -1929,7 +1929,7 @@ sub ConfigLoader
 # Purpose: Write our config file
 sub writeOutConfig
 {
-    my $out = shift;
+    my $out    = shift;
     my $header = "gpgpwd configuration file\n# You can also use 'gpgpwd config' to alter this file";
 
     if ($out)
@@ -1944,6 +1944,7 @@ sub writeOutConfig
         }
     }
     $out  //= $gpgpwdDir.'/gpgpwd.conf';
+
 
     return ConfigWriter($out, $config,
         {
@@ -1966,7 +1967,8 @@ sub usage
     my $exitValue = shift;
 
     print "\n";
-    print 'USAGE: '.basename($0).' [OPTIONS]? [COMMAND] [PARAMETERS]'."\n";
+    print 'Usage: '.basename($0).' [<get/set/remove> <name>]'."\n";
+    print '  or : '.basename($0).' [<--options>] [<command> <parameters>]'."\n";
     print "\n";
     print "Options:\n";
     printHelp(''   , '--help'            , 'View this help screen');
@@ -1979,11 +1981,11 @@ sub usage
     printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
     print "\n";
     print "Commands:\n";
-    printHelp('' , 'get [name]'         , 'Get password for [name] (where [name] can be a perl-compatible regular expression)');
-    printHelp('' , 'set [name]'         , 'Add or change password for [name]');
-    printHelp('' , 'remove [name]'      , 'Remove the entry for [name]');
-    printHelp('' , 'rename [old] [new]' , 'Rename the entry for [old] to [new]');
-    printHelp('' , 'batchadd [file]'    , 'Batch add passwords from a file, see the manpage for the file syntax');
+    printHelp('' , 'get <name>'         , 'Get password for <name> (where <name> can be a perl-compatible regular expression)');
+    printHelp('' , 'set <name>'         , 'Add or change password for <name>');
+    printHelp('' , 'remove <name>'      , 'Remove the entry for <name>');
+    printHelp('' , 'rename <old> <new>' , 'Rename the entry for <old> to <new>');
+    printHelp('' , 'batchadd <file>'    , 'Batch add passwords from a file, see the manpage for the file syntax');
     printHelp('' , 'config'             , 'Retrieve or set settings in the gpgpwd config file');
     printHelp('' , 'git'                , 'Perform git commands');
     printHelp('' , 'upgrade'            , 'Upgrade an old database file to the new format if needed');
@@ -2014,7 +2016,7 @@ sub printHelp
     # The maximum length any line can be
     my $maxlen = 80;
     # The length the options take up
-    my $optionlen = 20;
+    my $optionlen = 23;
     # Check if the short/long are LONGER than optionlen, if so, we need
     # to do some additional magic to take up only $maxlen.
     # The +1 here is because we always add a space between them, no matter what
@@ -2046,7 +2048,7 @@ sub printHelp
     # Print it all
     foreach my $description (split(/\n/,$GeneratedDesc))
     {
-        printf "%-4s %-19s %s\n", $short,$long,$description;
+        printf "%-4s %-22s %s\n", $short,$long,$description;
         # Set short and long to '' to ensure we don't print the options twice
         $short = '';$long = '';
     }
@@ -2084,7 +2086,7 @@ sub initialize
         {
             print 'gpgpwd is upgrading...';
         }
-        mkpath($gpgpwdDir);
+        mkpath($gpgpwdDir) or die("Failed to create config directory \"$gpgpwdDir\": $!\n");
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
     # The default config
@@ -2104,6 +2106,7 @@ sub initialize
     else
     {
         # Load the config file
+        printv(V_INFO,'Loading config file at: '.$gpgpwdDir.'/gpgpwd.conf'."\n");
         ConfigLoader($gpgpwdDir.'/gpgpwd.conf',$config);
     }
 
@@ -2645,12 +2648,12 @@ I<--password-file> (ie. to temporarily operate on a different file).
 
 Configures the git mode for gpgpwd.
 
-Set to true to always enable.
+Set to I<true> to always enable.
 
-Set to auto to enable if the password file is in a directory contianing a
-.git-directory.
+Set to I<auto> to enable if the password file is in a directory contianing a
+.git-directory. This is the default.
 
-Set to false to always disable.
+Set to I<false> to always disable.
 
 =item B<clipboardMode>
 
