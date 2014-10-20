@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 6;
+use Test::More tests => 8;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -27,5 +27,9 @@ t_exitvalue(0,'The upgrade should succeed');
 eSpawn(qw(get mytestpassword));
 t_expect('mytestpassword      : gpgpwd','Retrieve password');
 t_exitvalue(0,'Retrieval of the password should succeed');
+
+eSpawn('upgrade');
+t_expect('Your database has already been upgraded.','Should not perform upgrade more than once');
+t_exitvalue(0,'Upgrade should return 0 even if it has already been upgraded');
 
 unlink($testfile);
