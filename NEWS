@@ -6,6 +6,7 @@ Version 0.6
 - Added a configuration file
 - Added a config command to manage the configuration file
 - Added a --set parameter for temporarily overriding config options
+- gpgpwd can now detect that a user has no gpg-keys
 - The parameters --git and --xcilp-clipboard have been deprecated.
     --set can now be used to achieve the same effect.
 - The parameter --no-git has been removed, and now produces an error

@@ -265,6 +265,27 @@ sub gpgAgentRunning
     return;
 }
 
+# Purpose: Check if there are any gpg keys available
+# Usage: verifyGPGKeys()
+sub verifyGPGKeys
+{
+    # Used to make sure this is not run more than once
+    state $verified = 0;
+    if ($verified)
+    {
+        return;
+    }
+    $verified = 1;
+
+    my $keyList = gpgIO(undef,[ qw(--list-keys) ],false,true) // '';
+    $keyList =~ s/^gpg:.*//g;
+
+    if ($keyList !~ /\n/)
+    {
+        pDie("Error: You appear to have no GnuPG-keys, which gpgpwd uses for its\nencryption. Before you can use gpgpwd you need to generate a GnuPG-key.\n\nTo quickly generate a key use: ".$gpg[0]." --gen-key\nIf you do not know what kind of key to generate, a good key to start with is\nan RSA key of the largest size (4096).\nFor more information see: http://www.gnupg.org/\n");
+    }
+}
+
 # Purpose: Write some data to gpg and return the output from gpg
 # Usage: gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
 # data is the data to be written to gpg
@@ -402,6 +423,19 @@ sub gpgIO
     }
     # Wait for children (ie. gpg) to exit, to avoid defunct processes
     waitpid($pid,0);
+
+    # Check the return value from gpg
+    my $ret = $?;
+    if ($ret != 0)
+    {
+        $ret = $ret << 8;
+        # Check if the user has no gpg keys, which may be the cause of the error.
+        # If the user has no keys gpgpwd will die with a message instructing how
+        # to get one.
+        verifyGPGKeys();
+        # Log information about the failed command
+        printv(V_INFO,$gpgCommand[0]." exited with non-zero return value: $ret\n");
+    }
 
     # Return whatever output we got from gpg
     return $output;
@@ -2194,6 +2228,8 @@ sub initialize
     {
         print "done\n\n";
     }
+    # Verify gpg keys on any upgrade
+    verifyGPGKeys();
 
     # Make sure we've got gpg or gpg2
     if (!InPath('gpg') && !InPath('gpg2'))
