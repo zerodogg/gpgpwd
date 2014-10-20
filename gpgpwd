@@ -958,11 +958,11 @@ sub toClipboard
     {
         if(InPath('xclip'))
         {
-            printv(V_LOG,'Use of xclip disabled: no DISPLAY set'."\n");
+            printv(V_LOG,'Use of clipboard disabled: no DISPLAY set'."\n");
         }
         else
         {
-            printv(V_LOG,'Use of xclip disabled: not installed'."\n");
+            printv(V_LOG,'Use of clipboard disabled: xclip not installed'."\n");
         }
         return '';
     }
@@ -1943,7 +1943,7 @@ sub writeOutConfig
             'HEADER'   => $header,
             'dataPath' => "The path to the password database file.\n# Use the special value DEFAULT for the default autodetected path",
             git        => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
-            'xclipMode' => "Configures which xclip mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both",
+            'clipboardMode' => "Configures which clipboard mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both\n#\tdisabled = disable automatic copying to the clipboard",
         });
 }
 
@@ -2081,7 +2081,7 @@ sub initialize
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
     # The default config
-    $config = { dataPath => 'DEFAULT', git => 'auto', 'xclipMode' => 'clipboard' };
+    $config = { dataPath => 'DEFAULT', git => 'auto', 'clipboardMode' => 'clipboard' };
     # If the config does not exist, write one
     if (!-e $gpgpwdDir.'/gpgpwd.conf')
     {
@@ -2133,24 +2133,28 @@ sub initialize
         symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
         printv(V_LOG,'Migrated from legacy database location');
     }
-    # Parse and configure the xclipMode set in the config file
-    if (defined $config->{xclipMode} && scalar(@clipboardTargets) == 0)
+    # Parse and configure the clipboardMode set in the config file
+    if (defined $config->{clipboardMode} && scalar(@clipboardTargets) == 0)
     {
-        if ($config->{xclipMode} eq 'both')
+        if ($config->{clipboardMode} eq 'both')
         {
             @clipboardTargets = qw(primary clipboard);
         }
-        elsif($config->{xclipMode} eq 'clipboard')
+        elsif($config->{clipboardMode} eq 'clipboard')
         {
             @clipboardTargets = qw(clipboard);
         }
-        elsif($config->{xclipMode} eq 'selection')
+        elsif($config->{clipboardMode} eq 'selection')
         {
             @clipboardTargets = qw(primary);
         }
+        elsif($config->{clipboardMode} eq 'disabled')
+        {
+            @clipboardTargets = ();
+        }
         else
         {
-            warn('Warning: Unknown value for xclipMode: '.$config->{xclipMode}."\n");
+            warn('Warning: Unknown value for clipboardMode: '.$config->{clipboardMode}."\n");
         }
     }
     # Configure git according to the config
@@ -2362,7 +2366,7 @@ sub main
             my $value = shift;
 
             print "Note: --xclip-clipboard is deprecated as of version 0.6\n";
-            print "      use the configuration setting xclipMode instead\n";
+            print "      use the configuration setting clipboardMode instead\n";
             print "      The parameter will be removed in gpgpwd 0.7\n";
 
             if ($value eq 'both')
@@ -2656,7 +2660,7 @@ Set to auto to enable if the password file is in a directory contianing a
 
 Set to false to always disable.
 
-=item B<xclipMode>
+=item B<clipboardMode>
 
 By default gpgpwd will copy passwords to the clipboard (the one that pastes through
 the usual I<ctrl+v> or "right click -> paste" means). With this you can change it.
@@ -2675,6 +2679,10 @@ Copy to the 'selection' clipboard. Paste with ie. middle-click.
 =item I<both>
 
 Copy to both the 'normal' and 'selection' clipboards.
+
+=item I<disable>
+
+Don't automatically copy passwords to the clipboard.
 
 =back
 

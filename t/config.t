@@ -26,15 +26,15 @@ eSpawn('config','dataPath');
 t_expect('dataPath=DEFAULT','dataPath should be DEFAULT by default');
 t_exitvalue(0,'Config retrieval should succeed');
 
-eSpawn('config','xclipMode');
-t_expect('xclipMode=clipboard','xclipMode should be clipboard by default');
+eSpawn('config','clipboardMode');
+t_expect('clipboardMode=clipboard','clipboardMode should be clipboard by default');
 t_exitvalue(0,'Config retrieval should succeed');
 
-eSpawn('config','xclipMode=both');
+eSpawn('config','clipboardMode=both');
 t_exitvalue(0,'Config setting should succeed');
 
-eSpawn('config','xclipMode');
-t_expect('xclipMode=both','xclipMode should have been changed');
+eSpawn('config','clipboardMode');
+t_expect('clipboardMode=both','clipboardMode should have been changed');
 t_exitvalue(0,'Config retrieval should succeed');
 
 eSpawn('config','git=false');
