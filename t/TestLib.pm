@@ -96,7 +96,7 @@ sub getCmd
     {
         return ($dir.'/../'.$binName,@_);
     }
-    return ($dir.'/../'.$binName,'--no-git','--password-file',$testfile,@_);
+    return ($dir.'/../'.$binName,'--password-file',$testfile,@_);
 }
 
 1;
