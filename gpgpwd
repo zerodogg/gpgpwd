@@ -1901,6 +1901,10 @@ sub ConfigWriter
 	}
 	foreach(sort(keys(%{$Config})))
     {
+        if ($_ =~ /^_/)
+        {
+            next;
+        }
 		if(defined($Description->{$_}))
         {
 			print $CONFIG "\n# $Description->{$_}";
@@ -1975,6 +1979,10 @@ sub writeOutConfig
     if ($out)
     {
         $header = 'gpgpwd configuration';
+        if ($config->{_override})
+        {
+            $header .= "\n# WARNING: Temporary overrides (via --set) are active";
+        }
     }
     else
     {
