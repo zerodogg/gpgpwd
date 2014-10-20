@@ -6,11 +6,19 @@ use Exporter qw(import);
 use Expect;
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
+use File::Temp qw(tempdir);
 our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd);
 
 our $e;
 our $testfile;
 my $useRawCMD = 0;
+
+if (!defined($ENV{GNUPG_HOME}))
+{
+    $ENV{GNUPGHOME} = $ENV{HOME}.'/.gnupg';
+}
+my $tmpHome = tempdir('gpgpwdt-home-XXXXXXXX',TMPDIR => 1, CLEANUP => 1);
+$ENV{HOME} = $tmpHome;
 
 sub t_exitvalue
 {
