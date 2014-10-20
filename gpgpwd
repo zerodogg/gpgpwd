@@ -2786,12 +2786,12 @@ environment variable specified by the XDG Base Directory Specification. The
 default value for XDG_CONFIG_HOME (and the value on most systems) is ~/.config,
 so on most systems this will be I<~/.config/gpgpwd>.
 
-=item I<~/.gpgpwd/gpgpwd.db>
+=item I<XDG_CONFIG_HOME/gpgpwd/gpgpwd.db>
 
 The default save location for the password database, overrideable by using
-I<--password-file>.
+I<--password-file> and the dataPath configuration option.
 
-=item I<~/.gpgpwd/gpgpwd.conf>
+=item I<XDG_CONFIG_HOME/gpgpwd/gpgpwd.conf>
 
 The gpgpwd configraution file. Can also be managed using the 'gpgpwd config'
 command.
