@@ -1713,7 +1713,13 @@ sub gitCommand
     my $subcommand = shift;
     my @params     = @_;
 
-    if ($subcommand eq 'pull' || $subcommand eq 'push')
+    if (!defined $subcommand)
+    {
+        die('Missing parameter: which git command to run'."\n".
+            'One of: pull, push, init, clone, remote, fetch, branch'."\n"
+        );
+    }
+    elsif ($subcommand eq 'pull' || $subcommand eq 'push')
     {
         git($subcommand,$storagePath);
     }
