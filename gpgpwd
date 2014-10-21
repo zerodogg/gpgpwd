@@ -45,7 +45,6 @@ my $gpgpwdDir;
 my $storagePath;
 my $dataVersion      = 2;
 my $enableGit        = false;
-my $useXclip         = true;
 my $verbosity        = 0;
 my $allMatches       = false;
 my $autoGPGAgent;
@@ -1064,7 +1063,7 @@ sub batchaddCommand
 sub toClipboard
 {
     my $value        = shift;
-    if (!$useXclip)
+    if (!@clipboardTargets)
     {
         return '';
     }
@@ -2437,7 +2436,7 @@ sub debugInfo
     printf($pattern , 'git version'       , getVersionFrom('git'       , '--version'));
 
     my $flags = '';
-    foreach my $flag (qw(enableGit useXclip allMatches))
+    foreach my $flag (qw(enableGit allMatches))
     {
         if (! eval('$'.$flag))
         {
@@ -2511,7 +2510,7 @@ sub main
         'v|verbose+' => \$verbosity,
         'p|password-file=s' => \$storagePath,
         'debuginfo' => \$debugInfo,
-        'C|no-xclip' => sub { $useXclip = false; },
+        'C|no-xclip' => sub { $configOverride->{clipboardMode} = 'disable'; },
         'force' => \$force,
         's|set=s' => sub {
             shift;
@@ -2676,9 +2675,12 @@ command. Using I<--set> temporarily disables the I<config> subcommand.
 
 =item B<-C, --no-xclip>
 
-Disables use of xclip(1). By default gpgpwd will copy passwords to the clipboard
-for easy pasting into password fields. When this option is supplied it supresses
-this behaviour.
+Disables use of xclip(1). Depending on the clipboardMode setting in the
+configuration file (which defaults to being enabled) gpgpwd will copy passwords
+to the clipboard for easy pasting into password fields. When this option is
+supplied it supresses this behaviour.
+
+This is equivalent to providing I<--set clipboardMode=disabled>.
 
 =item B<--all>
 
