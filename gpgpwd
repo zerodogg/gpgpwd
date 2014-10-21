@@ -277,7 +277,8 @@ sub verifyGPGKeys
     }
     $verified = 1;
 
-    my $keyList = gpgIO(undef,[ qw(--list-keys) ],false,true) // '';
+    my $keyList = gpgIO(undef,[ qw(--list-keys) ],false,true);
+    $keyList //= '';
     $keyList =~ s/^gpg:.*//g;
 
     if ($keyList !~ /\n/)
@@ -287,7 +288,8 @@ sub verifyGPGKeys
 }
 
 # Purpose: Write some data to gpg and return the output from gpg
-# Usage: gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
+# Usage: $output = gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
+#   or : ($output,$gpgExitStatus) = gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
 # data is the data to be written to gpg
 # gpgCommands is an arrayref of parameters for gpg
 # requiresUnlocked is a boolean. Set it to true if the provided gpgCommands require
@@ -303,6 +305,9 @@ sub gpgIO
 
     my $output;
     my $stderr;
+    # Used to store the return value when using open() directly
+    my $openRet;
+
     if (!$captureSTDERR)
     {
         open($stderr, '>&',\*STDERR);
@@ -383,6 +388,11 @@ sub gpgIO
     if(defined($in))
     {
         close($in) or reOut($stderr,false,'Failed to close communication with gpg: '.$!."\n");
+        # Store the return value if needed
+        if (!defined $openRet)
+        {
+            $openRet = $?;
+        }
     }
     # Read all pending output
     while(my @handles = $outputReader->can_read(120))
@@ -410,6 +420,11 @@ sub gpgIO
 
     # Close the output handle
     close($out) or warn('Failed to close communication with gpg: '.$!."\n");
+    # Store the return value if needed
+    if (!defined $openRet)
+    {
+        $openRet = $?;
+    }
     # Close the stderr handle if needed
     if(defined($err))
     {
@@ -426,6 +441,12 @@ sub gpgIO
 
     # Check the return value from gpg
     my $ret = $?;
+    # If the wait returned -1 then the return value may have been given to us when we
+    # closed a filehandle, so use the return value stored in $openRet instead.
+    if ($ret == -1)
+    {
+        $ret = $openRet;
+    }
     if ($ret != 0)
     {
         $ret = $ret << 8;
@@ -433,12 +454,31 @@ sub gpgIO
         # If the user has no keys gpgpwd will die with a message instructing how
         # to get one.
         verifyGPGKeys();
-        # Log information about the failed command
-        printv(V_INFO,$gpgCommand[0]." exited with non-zero return value: $ret\n");
+        # If our caller has not explicitly requested that we return multiple
+        # values (ie. that we also return the gpg return value) then we error
+        # out here to ensure that no corruption occurs. If the caller has
+        # requested the return value we return to our caller and allow it to
+        # handle the error directly.
+        if(!wantarray())
+        {
+            pDie($gpgCommand[0]." exited with non-zero return value: $ret\n".'(gpgpwd was executing: '.join(' ',@gpgCommand).')'."\n");
+        }
+        else
+        {
+            printv(V_LOG,$gpgCommand[0]." exited with non-zero return value: $ret\n");
+        }
     }
 
-    # Return whatever output we got from gpg
-    return $output;
+    # Return whatever output we got from gpg. Optionally with the
+    # return value if we are called in list context.
+    if(wantarray())
+    {
+        return ($output,$ret);
+    }
+    else
+    {
+        return $output;
+    }
 }
 
 # Purpose: Decrypt a string with gpg and return it
@@ -527,7 +567,7 @@ sub verifyMetadataSignature
     }
 
     # Verify the signature
-    my $signature = gpgIO($data,[ qw(--verify) ],false,true);
+    my ($signature,$signRet) = gpgIO($data,[ qw(--verify) ],false,true);
 
     # If no data was returned then something went wrong with gpg
     if (!defined($signature))
@@ -539,6 +579,12 @@ sub verifyMetadataSignature
     if ($signature !~ /^gpg: Good signature from/m)
     {
         pDie('Signature validation failed: invalid signature'."\n");
+    }
+
+    # If no data was returned then something went wrong with gpg
+    if ($signRet > 0)
+    {
+        pDie('Signature validation failed: gpg returned non-zero when checking the signature ('.$signRet.')'."\n");
     }
 
     printv(V_DEBUG,'gpg signature validation step succeeded'."\n");
@@ -555,11 +601,16 @@ sub verifyMetadataSignature
     printv(V_DEBUG,'signing key is '.$sigKey.', pubkey for encryption is '.$pubkey."\n");
 
     # Retrieve a list of all signatures matching the pubkey
-    my $keyList = gpgIO(undef, [ qw(--with-colons --list-sigs), $pubkey ]);
+    my ($keyList,$keyRet) = gpgIO(undef, [ qw(--with-colons --list-sigs), $pubkey ]);
     # If no data was returned then something went wrong with gpg
     if(!defined($keyList))
     {
         pDie('Signature validation failed: Unable to retrieve signature list from gpg'."\n");
+    }
+    # If no data was returned then something went wrong with gpg
+    if ($keyRet > 0)
+    {
+        pDie('Signature validation failed: gpg returned non-zero when validating the signature key ('.$keyRet.')'."\n");
     }
     my $valid = false;
     my $sigKeyLen = length($sigKey);
@@ -613,10 +664,14 @@ sub loadJSONStructure
     }
 
     my $preV2  = true;
-    my $string = gpgIO(undef,[ '--decrypt',$path ]);
+    my ($string,$gpgReturnVal) = gpgIO(undef,[ '--decrypt',$path ]);
     if (!defined($string))
     {
         pDie('Decryption failed: GPG did not return any data'."\n");
+    }
+    if ($gpgReturnVal > 0)
+    {
+        pDie('Decryption failed: GPG exited with a non-zero exit status ('.$gpgReturnVal.')'."\n");
     }
 
     # If we are using v2+ data format, then we need to perform additional parsing
