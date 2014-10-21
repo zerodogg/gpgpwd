@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 10;
+use Test::More tests => 9;
 use File::Temp qw(tempdir);
 use File::Copy qw(move);
 use FindBin;
@@ -18,12 +18,11 @@ print {$o} "#!/usr/bin/perl\n";
 print {$o} "exit(1);\n";
 close($o);
 chmod(0700,$tmpdir.'/gpg2');
+symlink($tmpdir.'/gpg2',$tmpdir.'/gpg');
 
 $ENV{PATH} = $tmpdir.':'.$ENV{PATH};
 
 eSpawn(qw(add testpassword));
-t_expect('Password> ','Password prompt');
-expect_send("1234567890\n");
 t_expect('-re','.*exited with non-zero return value.*','Should output information about the non-zero exit value');
 t_exitvalue('nonzero','Adding should not succeed');
 
@@ -33,6 +32,7 @@ delete($ENV{GPG_AGENT_INFO});
 # Then a broken gpg-agent binary
 
 move($tmpdir.'/gpg2',$tmpdir.'/gpg-agent');
+unlink($tmpdir.'/gpg');
 eSpawn(qw(add testpassword));
 t_expect('gpgpwd failed to start a gpg-agent, did not return any status information','Should output failure information');
 t_exitvalue('nonzero','Command should not succeed');
