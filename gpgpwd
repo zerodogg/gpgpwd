@@ -154,11 +154,14 @@ sub pExit
 {
     my $ret = shift;
     # Gently kill our started gpg agent if needed
-    if (defined($autoGPGAgent) && $autoGPGAgent > -1)
+    if (defined($autoGPGAgent) && $autoGPGAgent > -1 && defined($ENV{GPG_AGENT_INFO}))
     {
         my @GPGInfo = split(/:/,$ENV{GPG_AGENT_INFO});
-        kill('SIGINT',$GPGInfo[1]);
-        printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
+        if(defined $GPGInfo[1])
+        {
+            kill('SIGINT',$GPGInfo[1]);
+            printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
+        }
     }
     # Restore backups if present
     if (defined $storagePath && -e $storagePath.'~' && ! -e $storagePath)
@@ -216,12 +219,16 @@ sub autoInitGPGAgent
             $autoGPGAgent = open2(my $out, my $in, qw(gpg-agent --daemon));
             # Read the first line containing the GPG_AGENT_INFO variable
             my $info = <$out>;
-            # Parse out the variable contents
-            $info =~ s/GPG_AGENT_INFO=(\S+); export GPG_AGENT_INFO/$1/;
-            chomp($info);
-            # Set the GPG_AGENT_INFO environment variable for gpg to use
-            $ENV{GPG_AGENT_INFO} = $info;
-            printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
+            # Parse the read data if possible
+            if (defined $info)
+            {
+                # Parse out the variable contents
+                $info =~ s/GPG_AGENT_INFO=(\S+); export GPG_AGENT_INFO/$1/;
+                chomp($info);
+                # Set the GPG_AGENT_INFO environment variable for gpg to use
+                $ENV{GPG_AGENT_INFO} = $info;
+                printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
+            }
             # Disable tty
             printv(V_DEBUG,'Enabling agent requirement (--no-tty)'."\n");
             push(@gpg,'--no-tty');
@@ -229,6 +236,19 @@ sub autoInitGPGAgent
             if ($gpg[0] ne 'gpg2')
             {
                 push(@gpg,'--use-agent');
+            }
+            if (!gpgAgentRunning())
+            {
+                if(defined $info)
+                {
+                    waitpid($autoGPGAgent,0);
+                    my $ret = $? >> 8;
+                    pDie('gpgpwd failed to start a gpg-agent, it exited with the exit status '.$ret."\n");
+                }
+                else
+                {
+                    pDie('gpgpwd failed to start a gpg-agent, did not return any status information'."\n");
+                }
             }
         }
         else
