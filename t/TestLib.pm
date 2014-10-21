@@ -13,7 +13,7 @@ our $e;
 our $testfile;
 my $useRawCMD = 0;
 
-if (!defined($ENV{GNUPG_HOME}))
+if (!defined($ENV{GNUPGHOME}))
 {
     $ENV{GNUPGHOME} = $ENV{HOME}.'/.gnupg';
 }
