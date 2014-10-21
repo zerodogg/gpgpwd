@@ -568,11 +568,15 @@ sub verifyMetadataSignature
     $ENV{LC_ALL} = 'C';
 
     # Retrieve which pubkey the database is encrypted with
-    my $pubkey = gpgIO(undef,[ qw(--verbose --decrypt --list-only), $path ],false,true);
+    my ($pubkey,$pkRet) = gpgIO(undef,[ qw(--verbose --decrypt --list-only), $path ],false,true);
     # If we didn't get a list then something went wrong
     if (!defined($pubkey))
     {
         pDie('Signature validation failed: unable to retrieve encryption pubkey from database file'."\n");
+    }
+    if ($pkRet != 0)
+    {
+        pDie('Signature validation failed: gpg returned '.$pkRet.' when listing keys'."\n");
     }
     chomp($pubkey);
     # Parse out the public key
