@@ -925,6 +925,11 @@ sub writeData
     $encoded =~ s/,/,\n/g;
     my @encodedSplit = split(/\n/,$encoded);
 
+    # Force the signature key to get unlocked. This is fairly ugly, but we need to
+    # be able to write to and read from the gpg process, which can interfere with
+    # password prompts, thus executing this first here avoids having to do that.
+    gpgIO(undef, [ qw(--clearsign --output /dev/null /dev/null) ],0);
+
     # Sign the JSON string. The comment contains quick instructions on decrypting
     # the embedded passwords.
     $encoded = gpgIO(\@encodedSplit,[ qw(--clearsign --comment),'gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d' ], 1);
