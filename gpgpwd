@@ -509,6 +509,7 @@ sub gpgDecryptString
 {
     my $string = shift;
     my $base64 = shift;
+    my $decryptingKey = shift;
     # Decode the base64 string if needed
     if ($base64)
     {
@@ -523,7 +524,21 @@ sub gpgDecryptString
     }
 
     # Decrypt the string
-    my $output = gpgIO($string,[ qw(--decrypt) ],true);
+    my ($output,$gpgRetVal) = gpgIO($string,[ qw(--decrypt) ],true);
+    if ($gpgRetVal != 0)
+    {
+        statusOut('');
+        pDie('Fatal error: Failed to decrypt password for "'.$decryptingKey.'".'."\n".
+            'gpg exited with non-zero return value ('.$gpgRetVal.')'."\n".
+            'This indicates either a partial corruption of the password database, or'."\n".
+            'that your database is using multiple encryption keys, and one of them is'."\n".
+            'missing from this system.'."\n");
+    }
+    if (!defined $output || !length $output)
+    {
+        statusOut('');
+        pDie('Fatal error: Decryption of password for "'.$decryptingKey.'" yielded an empty string.'."\n".'This is likely a bug in gpgpwd.'."\n");
+    }
 
     # Return the decrypted data
     return $output;
@@ -1018,7 +1033,7 @@ sub loadFromFile
         }
         if(defined $data->{pwds}->{$name})
         {
-            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},true);
+            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},true,$name);
             if ($decryptedPW ne $pwd)
             {
                 print 'Changed '.$name.' from '.$decryptedPW.' to '.$pwd."\n";
@@ -1574,7 +1589,7 @@ sub outputEntry
     my $copy    = shift;
     my $copied  = '';
     printf('%-20s: %s',$key,'...');
-    my $value = gpgDecryptString($content->{password},true);
+    my $value = gpgDecryptString($content->{password},true,$key);
     if ($copy)
     {
         $copied = toClipboard($value);
@@ -1642,7 +1657,8 @@ sub removePWCommand
     statusOut('');
     if ($data->{pwds}->{$name})
     {
-        print 'Removed '.$name.' (with the password '.gpgDecryptString($data->{pwds}->{$name},true).')'."\n";
+        my $hadPassword = gpgDecryptString($data->{pwds}->{$name},true,$name);
+        print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
         delete($data->{pwds}->{$name});
     }
     else
