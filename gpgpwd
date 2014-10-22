@@ -2111,7 +2111,7 @@ sub usage
     printHelp('-v' , '--verbose'         , 'Increase verbosity (can be supplied multiple times)');
     printHelp('-p' , '--password-file'   , 'Override the configured password file');
     printHelp('-s' , '--set [<key>=<value>]' , 'Temporarily override the configuration setting <key> to <value>');
-    printHelp('-C' , '--no-xclip'        , 'Disable copying of passwords to the clipboard when running under X');
+    printHelp('-C' , '--no-clipboard'    , 'Disable copying of passwords to the clipboard when running under X');
     printHelp(''   , '--all'             , 'Return all possible results for "get", even very fuzzy results (default: return only the best results)');
     printHelp(''   , '--debuginfo'       , 'Display some information that can be useful for debugging');
     print "\n";
@@ -2518,7 +2518,7 @@ sub main
         'v|verbose+' => \$verbosity,
         'p|password-file=s' => \$storagePath,
         'debuginfo' => \$debugInfo,
-        'C|no-xclip' => sub { $configOverride->{clipboardMode} = 'disable'; },
+        'C|no-xclip|no-clipboard' => sub { $configOverride->{clipboardMode} = 'disable'; },
         'force' => \$force,
         's|set=s' => sub {
             shift;
@@ -2681,12 +2681,12 @@ will be used.
 Temporarily sets I<<key>> to I<<value>> for the duration of a single gpgpwd
 command. Using I<--set> temporarily disables the I<config> subcommand.
 
-=item B<-C, --no-xclip>
+=item B<-C, --no-clipboard>
 
-Disables use of xclip(1). Depending on the clipboardMode setting in the
-configuration file (which defaults to being enabled) gpgpwd will copy passwords
-to the clipboard for easy pasting into password fields. When this option is
-supplied it supresses this behaviour.
+Disables copying of passwords to the clipboard. Depending on the clipboardMode
+setting in the configuration file (which defaults to being enabled) gpgpwd will
+copy passwords to the clipboard for easy pasting into password fields. When
+this option is supplied it supresses this behaviour.
 
 This is equivalent to providing I<--set clipboardMode=disabled>.
 
