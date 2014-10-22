@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 16;
+use Test::More tests => 22;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib $FindBin::Bin;
@@ -14,7 +14,8 @@ $ENV{XDG_CONFIG_HOME} = $tmpdir;
 
 enable_raw_gpgpwd();
 
-system(getCmd('config'));
+eSpawn('config');
+t_exitvalue(0,'The initial run should succeed');
 
 ok(-e $tmpdir.'/gpgpwd/gpgpwd.conf','The config file was created');
 
@@ -28,6 +29,17 @@ t_exitvalue(0,'Config retrieval should succeed');
 
 eSpawn('config','clipboardMode');
 t_expect('clipboardMode=clipboard','clipboardMode should be clipboard by default');
+t_exitvalue(0,'Config retrieval should succeed');
+
+eSpawn('config','defaultPasswordLength');
+t_expect('defaultPasswordLength=0','defaultPasswordLength should be 0 by default');
+t_exitvalue(0,'Config retrieval should succeed');
+
+eSpawn('config','defaultPasswordLength=0');
+t_exitvalue(0,'Config setting should succeed');
+
+eSpawn('config','defaultPasswordLength');
+t_expect('defaultPasswordLength=0','defaultPasswordLength should have been changed');
 t_exitvalue(0,'Config retrieval should succeed');
 
 eSpawn('config','clipboardMode=both');

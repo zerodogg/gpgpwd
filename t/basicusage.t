@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 38;
+use Test::More tests => 41;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -80,5 +80,12 @@ t_expect('Password> ','A new password prompt after /alphanumeric');
 expect_send("\n");
 t_expect('-re','^Using password: \S{15}','Using information');
 t_exitvalue(0,'Adding a new password should succeed');
+
+eSpawn(qw(-s clipboardMode=disabled -s defaultPasswordLength=20 add testpword));
+t_expect('-re',"Random password: .....................\n",'Random password should be 20 characters');
+t_expect('Password> ','Password prompt');
+expect_send("1234567890\n");
+t_exitvalue(0,'Adding should succeed');
+
 
 unlink($testfile);
