@@ -468,7 +468,7 @@ sub gpgIO
     }
     if ($ret != 0)
     {
-        $ret = $ret << 8;
+        $ret = $ret >> 8;
         # Check if the user has no gpg keys, which may be the cause of the error.
         # If the user has no keys gpgpwd will die with a message instructing how
         # to get one.
