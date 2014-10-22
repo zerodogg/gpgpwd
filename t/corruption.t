@@ -2,8 +2,9 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 11;
+use Test::More tests => 14;
 use File::Temp qw(tempfile);
+use IPC::Open2 qw(open2);
 use FindBin;
 use lib $FindBin::Bin;
 use TestLib;
@@ -55,5 +56,30 @@ close($o);
 eSpawn(qw(get anothertest));
 t_expect('Signature validation failed: invalid signature','Invalid gpg signature');
 t_exitvalue('nonzero','Invalid signature error should exit with nonzero');
+
+unlink($testfile);
+# Silence gpg
+my $stderr;
+open($stderr, '>&',\*STDERR);
+open(STDERR,'>','/dev/null');
+open2(my $out, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
+print {$o} '{ "pwds":{"testpw":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}, "gpgpwdDataVersion":2 }'."\n";
+close($o);
+{
+    local $/ = undef;
+    my $data = <$out>;
+    close($out);
+    open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt --output),$testfile);
+    print {$o} $data;
+    close($o);
+}
+# Restore stderr
+open(STDERR,'>&',$stderr);
+
+eSpawn(qw(get testpw));
+t_expect('Fatal error: Failed to decrypt password for "testpw".','Fatal decryption error');
+t_expect('This indicates either a partial corruption of the password database, or','Friendly explanation of the error');
+t_exitvalue('nonzero','Invalid signature error should exit with nonzero');
+
 
 unlink($testfile);
