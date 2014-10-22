@@ -500,28 +500,23 @@ sub gpgIO
     }
 }
 
-# Purpose: Decrypt a string with gpg and return it
-# Usage: gpgDecryptString(STRING, BASE64=false)
+# Purpose: Decrypt a Base64-encoded gpg-encrypted string and return it
+# Usage: gpgDecryptString(STRING,Key);
 # STRING is the string to encrypt
-# BASE64 bool, if true the returned decrypted data will be base64-deencoded
-#   before being returned
+# Key is the name of the password being decrypted, used in error messages
 sub gpgDecryptString
 {
     my $string = shift;
-    my $base64 = shift;
     my $decryptingKey = shift;
-    # Decode the base64 string if needed
-    if ($base64)
+    # Decode the base64 string first
+    try
     {
-        try
-        {
-            $string = decode_base64($string);
-        }
-        catch
-        {
-            pDie('Failed to decode BASE64: '.$_."\n");
-        }
+        $string = decode_base64($string);
     }
+    catch
+    {
+        pDie('Failed to decode BASE64: '.$_."\n");
+    };
 
     # Decrypt the string
     my ($output,$gpgRetVal) = gpgIO($string,[ qw(--decrypt) ],true);
@@ -545,10 +540,8 @@ sub gpgDecryptString
 }
 
 # Purpose: Encrypt a string with gpg and return it
-# Usage: gpgEncryptString(STRING, BASE64=false)
+# Usage: gpgEncryptString(STRING);
 # STRING is the string to encrypt
-# BASE64 bool, if true the returned encrypted data will be base64-encoded
-#   before being returned
 sub gpgEncryptString
 {
     my $string = shift;
@@ -556,13 +549,8 @@ sub gpgEncryptString
 
     # Encrypt the data
     my $output = gpgIO($string,[ qw(--encrypt) ]);
-    # Return base64 encoded data if needed
-    if ($base64)
-    {
-        return encode_base64($output,'');
-    }
-    # Return raw data
-    return $output;
+    # Return base64 encoded data
+    return encode_base64($output,'');
 }
 
 # = = = = = = = = = = =
@@ -809,7 +797,7 @@ sub upgradeDataV1toV2
     # Perform data conversion. Encrypts every password explicitly.
     foreach my $pwd (keys %{$data->{pwds}})
     {
-        $data->{pwds}->{$pwd} = gpgEncryptString($data->{pwds}->{$pwd},true);
+        $data->{pwds}->{$pwd} = gpgEncryptString($data->{pwds}->{$pwd});
     }
     print "done\n";
     # Write out the data file with the converted data
@@ -1033,14 +1021,14 @@ sub loadFromFile
         }
         if(defined $data->{pwds}->{$name})
         {
-            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},true,$name);
+            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},$name);
             if ($decryptedPW ne $pwd)
             {
                 print 'Changed '.$name.' from '.$decryptedPW.' to '.$pwd."\n";
             }
         }
         $read++;
-        $data->{pwds}->{$name} = gpgEncryptString($pwd,true);
+        $data->{pwds}->{$name} = gpgEncryptString($pwd);
     }
     # Failing to close is not much of a problem, so just log it.
     close($in) or printv(V_INFO,'Failed to close filehandle: '.$!."\n");;
@@ -1478,7 +1466,7 @@ sub setPassword
     my $existing;
     if(defined $data->{pwds}->{$name})
     {
-        $existing = gpgDecryptString($data->{pwds}->{$name},true);
+        $existing = gpgDecryptString($data->{pwds}->{$name},$name);
     }
     statusOut('');
 
@@ -1572,7 +1560,7 @@ sub setPassword
     {
         print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
     }
-    $data->{pwds}->{$name} = gpgEncryptString($password,true);
+    $data->{pwds}->{$name} = gpgEncryptString($password);
 
     return 1;
 }
@@ -1589,7 +1577,7 @@ sub outputEntry
     my $copy    = shift;
     my $copied  = '';
     printf('%-20s: %s',$key,'...');
-    my $value = gpgDecryptString($content->{password},true,$key);
+    my $value = gpgDecryptString($content->{password},$key);
     if ($copy)
     {
         $copied = toClipboard($value);
@@ -1657,7 +1645,7 @@ sub removePWCommand
     statusOut('');
     if ($data->{pwds}->{$name})
     {
-        my $hadPassword = gpgDecryptString($data->{pwds}->{$name},true,$name);
+        my $hadPassword = gpgDecryptString($data->{pwds}->{$name},$name);
         print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
         delete($data->{pwds}->{$name});
     }
