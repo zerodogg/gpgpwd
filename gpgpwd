@@ -1196,6 +1196,10 @@ sub getPasswords
         if ($fuzzy > 1)
         {
             $pattern =~ s/\W//g;
+            if (!length($pattern))
+            {
+                last;
+            }
         }
 
         my $regex;
