@@ -43,7 +43,7 @@ my $VERSION          = '0.6';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
-my $dataVersion      = 2;
+my $dataVersion      = 3;
 my $enableGit        = false;
 my $verbosity        = 0;
 my $allMatches       = false;
@@ -751,19 +751,19 @@ sub loadJSONStructure
     return ($preV2,$data);
 }
 
-# Purpose: Upgrade a v1 database file to v2
-# Usage: upgradeDataV1toV2();
-sub upgradeDataV1toV2
+# Purpose: Upgrade a v1 database file to v3
+# Usage: upgradeDataV1toCurrent();
+sub upgradeDataV1toCurrent
 {
     # Load the data
     my($preV2,$data) = loadJSONStructure($storagePath);
     # Check if the data has already been upgraded
-    if($data->{gpgpwdDataVersion} eq '2')
+    if($data->{gpgpwdDataVersion} > 1)
     {
         # If it is a preV2 file then someone has tampered with it
         if ($preV2)
         {
-            pDie('Your database file is a v1 file claiming to be v2'."\n".
+            pDie('Your database file is a v1 file claiming to be 2+'."\n".
                 'Someone has tampered with your database file. Upgrade aborted.'."\n");
         }
         else
@@ -797,7 +797,7 @@ sub upgradeDataV1toV2
     # Perform data conversion. Encrypts every password explicitly.
     foreach my $pwd (keys %{$data->{pwds}})
     {
-        $data->{pwds}->{$pwd} = gpgEncryptString($data->{pwds}->{$pwd});
+        $data->{pwds}->{$pwd} = { pwd => gpgEncryptString($data->{pwds}->{$pwd}) };
     }
     print "done\n";
     # Write out the data file with the converted data
@@ -810,8 +810,73 @@ sub upgradeDataV1toV2
     copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
     # Write the data
     writeData($storagePath,$data);
-    print "done\nVerifying integrity...";
+    print "done\n";
     # Verify the integrity of the upgraded data file
+    verifyUpgradeIntegrity();
+    # Remove the backup
+    unlink($storagePath.'.gpgpwdupgrade');
+    print "done - upgrade successfully completed\n";
+    pExit(0);
+}
+
+# Purpose: Upgrade a v2 database to v3
+# Usage: upgradeDataV2toCurrent();
+sub upgradeDataV2toCurrent
+{
+    # Load the data
+    my($preV2,$data) = loadJSONStructure($storagePath);
+    # Check if the data has already been upgraded
+    if($data->{gpgpwdDataVersion} eq '3')
+    {
+        return 1;
+    }
+    if($data->{gpgpwdDataVersion} eq '1')
+    {
+        pDie('V2 to V3 subroutine triggered for V1 to V3 upgrades'."\n");
+    }
+    print "Database upgrade triggered...\n";
+    # First perform a git pull
+    if ($enableGit)
+    {
+        print "First performing a git pull...\n";
+        git('pull',$storagePath);
+        print "Reloading data from git...\n";
+        ($preV2,$data) = loadJSONStructure($storagePath);
+        if($data->{gpgpwdDataVersion} eq '3')
+        {
+            print "Data in git has been upgraded. Upgrade aborted\n";
+        }
+    }
+    print 'Converting ...';
+    # Perform data conversion. Encrypts every password explicitly.
+    foreach my $pwd (keys %{$data->{pwds}})
+    {
+        $data->{pwds}->{$pwd} = { pwd => $data->{pwds}->{$pwd} };
+    }
+    print "done\n";
+    # Write out the data file with the converted data
+    print 'Writing updated data...';
+    # First, make a backup
+    if (-e $storagePath.'.gpgpwdupgrade')
+    {
+        pDie($storagePath.'.gpgpwdupgrade already exists. Move this file out of the way.'."\n");
+    }
+    copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
+    # Write the data
+    writeData($storagePath,$data);
+    print "done\n";
+    # Verify the integrity of the upgraded data file
+    verifyUpgradeIntegrity();
+    # Remove the backup
+    unlink($storagePath.'.gpgpwdupgrade');
+    print "done - upgrade successfully completed\n";
+    pExit(0);
+}
+
+# Purpose: Verify that a data upgrade was successful
+sub verifyUpgradeIntegrity
+{
+    print "Verifying integrity...";
     try
     {
         # Check that the new data is larger than the old
@@ -861,10 +926,6 @@ sub upgradeDataV1toV2
             'This is likely a bug in gpgpwd.'."\n"
         );
     };
-    # Remove the backup
-    unlink($storagePath.'.gpgpwdupgrade');
-    print "done - upgrade successfully completed\n";
-    pExit(0);
 }
 
 # Purpose: Load the password database
@@ -912,6 +973,10 @@ sub loadData
     {
         # A data format v1 file is claiming to be a version 2 file. Abort.
         pDie('pre-2 dataformat claiming to be 2+. Someone has modified your password file. Aborting.'."\n");
+    }
+    elsif($data->{gpgpwdDataVersion} eq '2')
+    {
+        upgradeDataV2toCurrent();
     }
     elsif ($data->{gpgpwdDataVersion} ne $dataVersion)
     {
@@ -1021,14 +1086,14 @@ sub loadFromFile
         }
         if(defined $data->{pwds}->{$name})
         {
-            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name},$name);
+            my $decryptedPW = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
             if ($decryptedPW ne $pwd)
             {
                 print 'Changed '.$name.' from '.$decryptedPW.' to '.$pwd."\n";
             }
         }
         $read++;
-        $data->{pwds}->{$name} = gpgEncryptString($pwd);
+        $data->{pwds}->{$name} = { pwd => gpgEncryptString($pwd) };
     }
     # Failing to close is not much of a problem, so just log it.
     close($in) or printv(V_INFO,'Failed to close filehandle: '.$!."\n");;
@@ -1345,10 +1410,23 @@ sub getPasswords
         return;
     }
 
-    print 'Passwords:';
+    # Caluculates the password length for the header
+    my $passwordWidth = $config->{defaultPasswordLength} || 15;
+    # Add the size of " (copied)" (9) plus padding (10)
+    $passwordWidth += 19;
+    if ($config->{storeUsernames} eq 'true')
+    {
+        printf('%-20s  %-'.$passwordWidth.'s %s'."\n",'Name','Password','Username');
+        printf('%-20s  %-'.$passwordWidth.'s %s'."\n",'----','--------','--------');
+    }
+    else
+    {
+        print 'Passwords:';
+    }
     if ($allMatches)
     {
         print ' (showing all matches, including very fuzzy ones)';
+        print "\n";
     }
     elsif ($fuzzySearch)
     {
@@ -1358,15 +1436,15 @@ sub getPasswords
             print 'very ';
         }
         print 'fuzzy search)';
+        print "\n";
     }
-    print "\n";
 
     my $entries = scalar(keys(%{ $matches }));
     my $entryNo = 0;
     foreach my $entry (sort { $matches->{$a}->{score} <=> $matches->{$b}->{score} } keys %{$matches})
     {
         $entryNo++;
-        outputEntry($entry,$matches->{$entry}, $entryNo == 1);
+        outputEntry($entry,$matches->{$entry}, $entryNo == 1,$passwordWidth);
     }
 
     return 1;
@@ -1448,7 +1526,8 @@ sub getMatches
                 }
             }
             $matches->{$key} = {
-                password => $data->{pwds}->{$key},
+                password => $data->{pwds}->{$key}->{pwd},
+                user => $data->{pwds}->{$key}->{user},
                 score => $entryScore,
             };
         }
@@ -1470,9 +1549,11 @@ sub setPassword
     my $length;
     my $readLine      = Term::ReadLine->new('gpgpwd');
     my $existing;
+    my $existingUser;
     if(defined $data->{pwds}->{$name})
     {
-        $existing = gpgDecryptString($data->{pwds}->{$name},$name);
+        $existing = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
+        $existingUser = $data->{pwds}->{$name}->{user};
     }
     statusOut('');
 
@@ -1494,12 +1575,18 @@ sub setPassword
         {
             print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
             print 'Enter the password you want to change it to, or press enter to use the random'."\n";
+            print 'password listed below. ';
+            if ($config->{storeUsernames} eq 'true')
+            {
+                print 'Enter "-" to keep the existing password.'."\n";
+            }
         }
         else
         {
             print 'Enter the password you want to use, or press enter to use the random'."\n";
+            print 'password listed below. ';
         }
-        print 'password listed below. Some commands are available, enter /help to list them'."\n";
+        print 'Some commands are available, enter /help to list them'."\n";
         print 'Random password: '.$random.$copied."\n";
         $password = $readLine->readline('Password> ');
         # If a user sends EOF, just go through the loop again
@@ -1509,6 +1596,10 @@ sub setPassword
             next;
         }
         chomp $password;
+        if($password eq '-' && defined $existing)
+        {
+            $password = $existing;
+        }
         if (!length $password)
         {
             $password = $random;
@@ -1561,12 +1652,50 @@ sub setPassword
             $length = undef;
         }
     }
+    my $user;
+    if ($config->{storeUsernames} eq 'true')
+    {
+        print "\n";
+        if(defined $existingUser)
+        {
+            print "Enter the username for this entry, or just press enter to use\n";
+            print "the current username ($existingUser).\n";
+            print "Enter a single dot (.) to remove the stored username\n";
+        }
+        else
+        {
+            print "Enter the username for this entry, or just press enter to not store any username\n";
+        }
+        $user = $readLine->readline('Username> ');
+        chomp $user;
+    }
 
-    if(defined $existing)
+    if(defined $existing && $existing ne $password)
     {
         print 'Changed '.$name.' from '.$existing.' to '.$password."\n";
     }
-    $data->{pwds}->{$name} = gpgEncryptString($password);
+    if(defined $existingUser && defined $user)
+    {
+        if($user eq '.')
+        {
+            print 'Removed the username for '.$name."\n";
+            $user = undef;
+        }
+        else
+        {
+            print 'Changed the username for '.$name.' from '.$existingUser.' to '.$user."\n";
+        }
+    }
+    my $entry = { pwd => gpgEncryptString($password) };
+    if(defined $user && length($user))
+    {
+        $entry->{user} = $user;
+    }
+    else
+    {
+        delete($entry->{user});
+    }
+    $data->{pwds}->{$name} = $entry;
 
     return 1;
 }
@@ -1578,9 +1707,10 @@ sub setPassword
 # COPY is a bool, if true it will toClipboard() the VALUE
 sub outputEntry
 {
-    my $key     = shift;
-    my $content = shift;
-    my $copy    = shift;
+    my $key           = shift;
+    my $content       = shift;
+    my $copy          = shift;
+    my $passwordWidth = shift;
     my $copied  = '';
     printf('%-20s: %s',$key,'...');
     my $value = gpgDecryptString($content->{password},$key);
@@ -1590,7 +1720,17 @@ sub outputEntry
     }
 
     printv(V_LOG,$key.' had a score of '.$content->{score}."\n");
-    printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
+    if ($config->{storeUsernames} eq 'true' && defined($content->{user}))
+    {
+        printf("\r".'%-20s: %-'.$passwordWidth.'s %s'."\n",
+            $key,
+            $value.$copied,
+            $content->{user});
+    }
+    else
+    {
+        printf("\r".'%-20s: %s'."\n",$key,$value.$copied);
+    }
 
     return 1;
 }
@@ -1651,7 +1791,7 @@ sub removePWCommand
     statusOut('');
     if ($data->{pwds}->{$name})
     {
-        my $hadPassword = gpgDecryptString($data->{pwds}->{$name},$name);
+        my $hadPassword = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
         print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
         delete($data->{pwds}->{$name});
     }
@@ -2094,6 +2234,7 @@ sub writeOutConfig
             git        => "Configures gpgpwd's git mode. Default=auto\n# Valid settings:\n#\ttrue = always enable\n#\tauto = Enable if a .git directory exists in the same directory as the pwddb\n#\tfalse = never enable\n# The --git and --no-git parameters override this setting.",
             'clipboardMode' => "Configures which clipboard mode to use\n# Valid settings:\n# \t clipboard = (default) the normal clipboard\n#\t selection = the selection clipboard\n#\t both = use both\n#\tdisabled = disable automatic copying to the clipboard",
             'defaultPasswordLength' => "Sets the length of the default password generated by gpgpwd\n# An integer between 10-250. The special value 0 uses the gpg default\n# (which is currently 15, but may be increased later)\n#\n# You can override this temporarily with the /regenerate command\n# on the password prompt.",
+            'storeUsernames' => "Enables or disables storage of usernames with gpgpwd\n# Valid settings:\n#\ttrue = enable username storage\n#\tfalse = disable username storage\n#\n# Any previously stored usernames will still be saved with this set to false\n# but they will not be retrieved or displayed by gpgpwd, and gpgpwd\n# will not prompt you to enter a username when adding new entries to the\n# database",
         });
 }
 
@@ -2232,7 +2373,7 @@ sub initialize
         printv(V_LOG,'Created '.$gpgpwdDir."\n");
     }
     # The default config
-    $config = { dataPath => 'DEFAULT', git => 'auto', 'clipboardMode' => 'clipboard', 'defaultPasswordLength' => 0 };
+    $config = { dataPath => 'DEFAULT', git => 'auto', 'clipboardMode' => 'clipboard', 'defaultPasswordLength' => 0, storeUsernames => 'true' };
     # If the config does not exist, write one
     if (!-e $gpgpwdDir.'/gpgpwd.conf')
     {
@@ -2609,7 +2750,7 @@ sub main
     }
     elsif($command eq 'upgrade')
     {
-        upgradeDataV1toV2();
+        upgradeDataV1toCurrent();
     }
     elsif($command eq 'git')
     {
@@ -2850,6 +2991,15 @@ may be increased later)
 
 You can override this temporarily with the /regenerate command on the password
 prompt.
+
+=item B<storeUsernames>
+
+Enables or disables storing usernames. If this is set to "false" then gpgpwd
+will not prompt for usernames, nor display usernames when an entry is retrieved.
+If it is set to "true" then gpgpwd will both store and display usernames
+for entries in the password database.
+
+The default is true.
 
 =back
 
