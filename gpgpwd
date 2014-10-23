@@ -917,7 +917,9 @@ sub loadData
     elsif ($data->{gpgpwdDataVersion} ne $dataVersion)
     {
         pDie($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
-            'This version only supports version '.$dataVersion.' - refusing to continue'."\n");
+            'This version only supports version '.$dataVersion.'.'."\n".
+            'You need to upgrade gpgpwd, see http://random.zerodogg.org/gpgpwd/'."\n"
+        );
     }
 
     $data->{pwds} //= {};
