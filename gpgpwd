@@ -871,6 +871,11 @@ sub upgradeDataV2toCurrent
     # Remove the backup
     unlink($storagePath.'.gpgpwdupgrade');
     print "done - upgrade successfully completed\n";
+
+    # Return the new data (we just return it directly, we know that it is valid
+    # since verifyUpgradeIntegrity has done a check that includes performing a
+    # loadData())
+    return $data;
 }
 
 # Purpose: Verify that a data upgrade was successful
@@ -976,7 +981,7 @@ sub loadData
     }
     elsif($data->{gpgpwdDataVersion} eq '2')
     {
-        upgradeDataV2toCurrent();
+        $data = upgradeDataV2toCurrent();
     }
     elsif ($data->{gpgpwdDataVersion} ne $dataVersion)
     {
