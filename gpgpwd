@@ -1681,6 +1681,10 @@ sub setPassword
             print 'Removed the username for '.$name."\n";
             $user = undef;
         }
+        elsif(!length($user))
+        {
+            $user = $existingUser;
+        }
         else
         {
             print 'Changed the username for '.$name.' from '.$existingUser.' to '.$user."\n";
