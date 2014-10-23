@@ -113,6 +113,7 @@ sub psystem
 # Usage: Same as die()
 sub pDie
 {
+    print "\r";
     if (!$pDieUsepExit)
     {
         die(@_);
