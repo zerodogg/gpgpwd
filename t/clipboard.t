@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 5;
+use Test::More tests => 6;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -26,6 +26,8 @@ SKIP:
     eSpawn(qw(add testpassword));
     t_expect('Password> ','Password prompt');
     expect_send("1234567890\n");
+    t_expect('Username> ','Username prompt');
+    expect_send("user\n");
     t_exitvalue(0,'Adding should succeed');
 
     eSpawn(qw(get testpassword));

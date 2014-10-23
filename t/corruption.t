@@ -40,7 +40,7 @@ t_exitvalue('nonzero','Empty JSON data error should exit with nonzero');
 
 unlink($testfile);
 open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
-print {$o} '{ "pwds":{}, "gpgpwdDataVersion":2 }';
+print {$o} '{ "pwds":{}, "gpgpwdDataVersion":3 }';
 close($o);
 eSpawn(qw(get anothertest));
 t_expect('pre-2 dataformat claiming to be 2+. Someone has modified your password file. Aborting.','Unsigned v2 data');
@@ -49,7 +49,7 @@ t_exitvalue('nonzero','Unsigned v2 data error should exit with nonzero');
 unlink($testfile);
 open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
 print {$o} "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA1\n\n";
-print {$o} '{ "pwds":{}, "gpgpwdDataVersion":2 }';
+print {$o} '{ "pwds":{}, "gpgpwdDataVersion":3 }';
 print {$o} "\n-----BEGIN PGP SIGNATURE-----\nVersion: GnuPG v2.0.22 (GNU/Linux)\nComment: gpgpwd password file.\n";
 print {$o} "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n-----END PGP SIGNATURE-----\n";
 close($o);
@@ -63,7 +63,7 @@ my $stderr;
 open($stderr, '>&',\*STDERR);
 open(STDERR,'>','/dev/null');
 open2(my $out, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
-print {$o} '{ "pwds":{"testpw":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}, "gpgpwdDataVersion":2 }'."\n";
+print {$o} '{ "pwds":{"testpw":{"pwd:":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}}, "gpgpwdDataVersion":3 }'."\n";
 close($o);
 {
     local $/ = undef;

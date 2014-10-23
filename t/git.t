@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 34;
+use Test::More tests => 36;
 use File::Temp qw(tempdir);
 use FindBin;
 use Cwd qw(realpath);
@@ -19,6 +19,8 @@ enable_raw_gpgpwd();
 eSpawn(qw(add testpassword));
 t_expect('Password> ','Password prompt');
 expect_send("1234567890\n");
+t_expect('Username> ','Username prompt');
+expect_send("username\n");
 t_exitvalue(0,'Adding should succeed');
 
 eSpawn('git','init');
@@ -64,6 +66,8 @@ t_exitvalue(0,'Retrieval command should succeed');
 eSpawn(qw(set testpassword));
 t_expect('Password> ','Password prompt');
 expect_send("12x4567890\n");
+t_expect('Username> ','Username prompt');
+expect_send("username\n");
 t_exitvalue(0,'Changing should succeed');
 
 # Switch back to the initial root

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 9;
+use Test::More tests => 10;
 use File::Temp qw(tempdir);
 use File::Copy qw(move);
 use FindBin;
@@ -63,6 +63,8 @@ chmod(0700,$tmpdir.'/gpg-agent');
 eSpawn(qw(add testpassword));
 t_expect('Password> ','Password prompt');
 expect_send("1234567890\n");
+t_expect('Username> ','Username prompt');
+expect_send("user\n");
 t_expect('-re','.*exited with non-zero return value.*','Should output information about the non-zero exit value');
 t_exitvalue('nonzero','Adding should not succeed');
 
