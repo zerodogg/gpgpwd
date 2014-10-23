@@ -1770,6 +1770,18 @@ sub git
             printv(V_INFO,'Not pulling since SSH_AGENT_PID is not set, and neither is GNOME_KEYRING_PID and SSH_AUTH_SOCK'."\n");
         }
     }
+
+    open(my $storedErr,'>&',\*STDERR);
+    open(STDERR,'>','/dev/null');
+    my $res = psystem(qw(git config --local --get branch.master.remote));
+    open(STDERR,'>&',$storedErr);
+
+    if ($res != 0)
+    {
+        print "Warning: git pull/push disabled: no remote set for the \"master\" branch\n";
+        return;
+    }
+
     if($command eq 'pull')
     {
         print "\n(git pulling): ";
