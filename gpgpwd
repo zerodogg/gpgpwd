@@ -834,6 +834,7 @@ sub upgradeDataV2toCurrent
     {
         pDie('V2 to V3 subroutine triggered for V1 to V3 upgrades'."\n");
     }
+    statusOut('');
     print "Database upgrade triggered...\n";
     # First perform a git pull
     if ($enableGit)
