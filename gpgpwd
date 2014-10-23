@@ -870,7 +870,6 @@ sub upgradeDataV2toCurrent
     # Remove the backup
     unlink($storagePath.'.gpgpwdupgrade');
     print "done - upgrade successfully completed\n";
-    pExit(0);
 }
 
 # Purpose: Verify that a data upgrade was successful
