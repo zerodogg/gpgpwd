@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 52;
+use Test::More tests => 72;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -108,5 +108,49 @@ t_exitvalue(0,'Adding should succeed');
 eSpawn(qw(-s clipboardMode=disabled get withoutusername));
 t_expect('-re','withoutusername     : 1234567890'."\r?\$",'Should retrieve username-less entry');
 t_exitvalue(0,'Getting a username-less entry should succeed');
+
+eSpawn(qw(add changingonlyone));
+t_expect('Password> ','Password prompt');
+expect_send("1234567890\n");
+t_expect('Username> ','Username prompt');
+expect_send("theuser\n");
+t_exitvalue(0,'Adding should succeed');
+
+eSpawn(qw(-s clipboardMode=disabled get changingonlyone));
+t_expect('-re','changingonlyone\s*: 1234567890\s+(\S+\s+)?theuser'."\r?\$",'Should retrieve proper entry with username');
+t_exitvalue(0,'Getting a the username entry should succeed');
+
+eSpawn(qw(set changingonlyone));
+t_expect('Password> ','Password prompt');
+expect_send("-\n");
+t_expect('Username> ','Username prompt');
+expect_send("newuser\n");
+t_exitvalue(0,'Changing should succeed');
+
+eSpawn(qw(-s clipboardMode=disabled get changingonlyone));
+t_expect('-re','changingonlyone\s*: 1234567890\s+(\S+\s+)?newuser'."\r?\$",'Should retrieve the new username');
+t_exitvalue(0,'Getting a the username entry should succeed');
+
+eSpawn(qw(set changingonlyone));
+t_expect('Password> ','Password prompt');
+expect_send("newpw\n");
+t_expect('Username> ','Username prompt');
+expect_send("\n");
+t_exitvalue(0,'Changing should succeed');
+
+eSpawn(qw(-s clipboardMode=disabled get changingonlyone));
+t_expect('-re','changingonlyone\s*: newpw\s+(\S+\s+)?newuser'."\r?\$",'Should retrieve the new password');
+t_exitvalue(0,'Getting a the password entry should succeed');
+
+eSpawn(qw(set changingonlyone));
+t_expect('Password> ','Password prompt');
+expect_send("-\n");
+t_expect('Username> ','Username prompt');
+expect_send(".\n");
+t_exitvalue(0,'Changing should succeed');
+
+eSpawn(qw(-s clipboardMode=disabled get changingonlyone));
+t_expect('-re','changingonlyone\s*: newpw'."\r?\$",'Should retrieve the entry with no username');
+t_exitvalue(0,'Getting a the password entry should succeed');
 
 unlink($testfile);
