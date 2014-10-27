@@ -73,6 +73,11 @@ t_exitvalue(0,'Changing should succeed');
 # Switch back to the initial root
 $ENV{XDG_CONFIG_HOME} = $tmpdir;
 
+# Should gracefully error out when there is no remote
+eSpawn(qw(git pull));
+t_expect('Warning: git pull/push disabled: no remote set for the "master" branch','Should issue a warning');
+t_exitvalue(0,'Should exit successfully');
+
 # Add the clone as origin
 eSpawn('git','remote','--','add','-f','-t','master','origin', $secondTmpdir.'/gpgpwd/gitrepo');
 t_exitvalue(0,'Adding the remote should succeed');
