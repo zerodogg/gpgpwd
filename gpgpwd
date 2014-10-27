@@ -109,6 +109,40 @@ sub psystem
     return system(@_);
 }
 
+# Purpose: system() wrapper that discards all output from the child
+# Usage: Same as system()
+# This will also output information of the command if $verbosity >= V_LOG like
+# psystem does.
+sub silentSystem
+{
+    if ($verbosity >= V_DEBUG)
+    {
+        # Disable silencing in debugging mode
+        return psystem(@_);
+    }
+
+    if ($verbosity >= V_LOG)
+    {
+        printv(V_LOG,'Running (silenced): '.join(' ',@_)."\n");
+    }
+
+    # Store references to our current STDERR/STDOUT
+    open(my $storedErr,'>&',\*STDERR);
+    open(my $storedOut,'>&',\*STDOUT);
+    # Redirect both STDERR and STDOUT to /dev/null
+    open(STDERR,'>','/dev/null');
+    open(STDOUT,'>','/dev/null');
+
+    # Run the command
+    my $return = system(@_);
+
+    # Restore STDERR/STDOUT
+    open(STDERR,'>&',$storedErr);
+    open(STDOUT,'>&',$storedOut);
+
+    return $return;
+}
+
 # Purpose: Wrapper around die() that uses pExit
 # Usage: Same as die()
 sub pDie
@@ -1771,12 +1805,13 @@ sub git
         }
     }
 
-    open(my $storedErr,'>&',\*STDERR);
-    open(STDERR,'>','/dev/null');
-    my $res = psystem(qw(git config --local --get branch.master.remote));
-    open(STDERR,'>&',$storedErr);
+    my $hasUpstream = 0;
+    if ( (silentSystem(qw(git config --local --get branch.master.remote)) == 0) || (silentSystem(qw(git config --local --get remote.origin.fetch .*master.*)) == 0))
+    {
+        $hasUpstream = 1;
+    }
 
-    if ($res != 0)
+    if (!$hasUpstream)
     {
         print "Warning: git pull/push disabled: no remote set for the \"master\" branch\n";
         return;
