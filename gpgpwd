@@ -1732,7 +1732,15 @@ sub setPassword
             print 'Changed the username for '.$name.' from '.$existingUser.' to '.$user."\n";
         }
     }
-    my $entry = { pwd => gpgEncryptString($password) };
+    my $entry = {};
+    if (defined $existing && $existing eq $password)
+    {
+        $entry->{pwd} = $data->{pwds}->{$name}->{pwd};
+    }
+    else
+    {
+        $entry->{pwd} = gpgEncryptString($password);
+    }
     if(defined $user && length($user))
     {
         $entry->{user} = $user;
