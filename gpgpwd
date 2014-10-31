@@ -1567,6 +1567,11 @@ sub getMatches
                     }
                 }
             }
+            if(defined $data->{pwds}->{$key}->{user})
+            {
+                printv(V_DEBUG,'Granting a -0.5 bonus to '.$key.' due to having a user entry'."\n");
+                $entryScore += -0.5;
+            }
             $matches->{$key} = {
                 password => $data->{pwds}->{$key}->{pwd},
                 user => $data->{pwds}->{$key}->{user},
