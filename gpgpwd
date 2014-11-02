@@ -1776,7 +1776,17 @@ sub outputEntry
     my $copy          = shift;
     my $passwordWidth = shift;
     my $copied  = '';
-    printf('%-20s: %s',$key,'...');
+    if ($config->{storeUsernames} eq 'true' && defined($content->{user}))
+    {
+        printf('%-20s: %-'.$passwordWidth.'s %s',
+            $key,
+            '...',
+            $content->{user});
+    }
+    else
+    {
+        printf('%-20s: %s',$key,'...');
+    }
     my $value = gpgDecryptString($content->{password},$key);
     if ($copy)
     {
