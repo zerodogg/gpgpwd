@@ -1289,6 +1289,7 @@ sub getPasswords
     my $name        = shift;
     my $fuzzySearch = 0;
     my $matches     = {};
+    my $hasUsernames;
 
     # Loop that tries fuzzier and fuzzier matching for the requested NAME until
     # it finds one that matches (or, if $allMatches is true, just keeps going
@@ -1428,7 +1429,7 @@ sub getPasswords
             printv(V_LOG,'Trying fuzzy regex ('.$fuzzy.'): '.$pattern."\n");
         }
 
-        getMatches($matches,$data,$regex,$name,$fuzzy,$grantsStartEndBonus);
+        $hasUsernames = getMatches($matches,$data,$regex,$name,$fuzzy,$grantsStartEndBonus);
 
         if ($allMatches)
         {
@@ -1456,14 +1457,15 @@ sub getPasswords
     my $passwordWidth = $config->{defaultPasswordLength} || 15;
     # Add the size of " (copied)" (9) plus padding (10)
     $passwordWidth += 19;
-    if ($config->{storeUsernames} eq 'true')
+    if ($config->{storeUsernames} eq 'true' && $hasUsernames)
     {
         printf('%-20s  %-'.$passwordWidth.'s %s'."\n",'Name','Password','Username');
         printf('%-20s  %-'.$passwordWidth.'s %s'."\n",'----','--------','--------');
     }
     else
     {
-        print 'Passwords:';
+        printf('%-20s  %-'.$passwordWidth.'s'."\n",'Name','Password');
+        printf('%-20s  %-'.$passwordWidth.'s'."\n",'----','--------');
     }
     if ($allMatches)
     {
@@ -1493,7 +1495,8 @@ sub getPasswords
 }
 
 # Purpose: Get data entries that match a given regex
-# Usage: $matches = getMatches($data,$regex,$name);
+# Usage: $hasUsernames = getMatches($data,$regex,$name);
+# hasUsernames is a bool, true if any of the matched entries had a username
 sub getMatches
 {
     my $matches             = shift;
@@ -1504,6 +1507,7 @@ sub getMatches
     my $grantsStartEndBonus = shift;
     my $searchLength        = length($name);
     my $fuzzyNo             = $score;
+    my $hasUsernames;
 
     # Iterate through all of the possible passwords, checking each if it
     # matches the $regex. If it does we assign a numeric score to it, where a
@@ -1571,6 +1575,7 @@ sub getMatches
             {
                 printv(V_DEBUG,'Granting a -0.5 bonus to '.$key.' due to having a user entry'."\n");
                 $entryScore += -0.5;
+                $hasUsernames = 1;
             }
             $matches->{$key} = {
                 password => $data->{pwds}->{$key}->{pwd},
@@ -1579,7 +1584,7 @@ sub getMatches
             };
         }
     }
-    return $matches;
+    return $hasUsernames;
 }
 
 # Purpose: Set a password value in the database
