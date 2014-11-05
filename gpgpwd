@@ -1437,6 +1437,7 @@ sub getMatches
             {
                 # Grant a -5 bonus if it is an exact match
                 $entryScore -= 5;
+                printv(V_DEBUG,'Granting a -5 bonus to '.$key.' because it is an exact match'."\n");
             }
             else
             {
