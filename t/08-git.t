@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 36;
+use Test::More tests => 38;
 use File::Temp qw(tempdir);
 use FindBin;
 use Cwd qw(realpath);
