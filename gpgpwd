@@ -2582,7 +2582,7 @@ sub main
         'v|verbose+' => \$verbosity,
         'p|password-file=s' => \$storagePath,
         'debuginfo' => \$debugInfo,
-        'C|no-xclip|no-clipboard' => sub { $configOverride->{clipboardMode} = 'disable'; },
+        'C|no-xclip|no-clipboard' => sub { $configOverride->{clipboardMode} = 'disabled'; },
         'force' => \$force,
         's|set=s' => sub {
             shift;
@@ -2887,7 +2887,7 @@ Copy to the 'selection' clipboard. Paste with ie. middle-click.
 
 Copy to both the 'normal' and 'selection' clipboards.
 
-=item I<disable>
+=item I<disabled>
 
 Don't automatically copy passwords to the clipboard.
 
