@@ -56,7 +56,7 @@ my $t = $ENV{HOME};
 mkpath($t.'/t1');
 copy($testfile,$t.'/t1/gpgpwd.db');
 
-eSpawn(qw(--set clipboardMode=disable get testpw));
+eSpawn(qw(--set clipboardMode=disabled get testpw));
 t_expect('Database upgrade triggered...','Initial upgrade message');
 t_expect('Converting ...done','Conversion message');
 t_expect('Writing updated data...done','Write message');
@@ -64,7 +64,7 @@ t_expect('Verifying integrity...done - upgrade successfully completed','Integrit
 t_expect('-re','testpw\s*: testpassword'."\r?\$",'Should retrieve database entry');
 t_exitvalue(0,'The upgrade should succeed');
 
-eSpawn(qw(--set clipboardMode=disable get testpw));
+eSpawn(qw(--set clipboardMode=disabled get testpw));
 t_expect('-re','testpw\s*: testpassword'."\r?\$",'Should retrieve database entry');
 t_exitvalue(0,'The retrieval should succeed');
 unlink($testfile);
@@ -80,7 +80,7 @@ eSpawn(qw(git clone),$t.'/t1/');
 t_expect('-re','Git repository initialized in.*','Success message');
 t_exitvalue(0,'git clone should succeed');
 
-eSpawn(qw(-p),$t.'/t1/gpgpwd.db',qw(--set clipboardMode=disable get testpw));
+eSpawn(qw(-p),$t.'/t1/gpgpwd.db',qw(--set clipboardMode=disabled get testpw));
 t_expect('Database upgrade triggered...','Initial upgrade message');
 t_expect('Converting ...done','Conversion message');
 t_expect('Writing updated data...','Write message (partial)');
@@ -88,7 +88,7 @@ t_expect('Verifying integrity...done - upgrade successfully completed','Integrit
 t_expect('-re','testpw\s*: testpassword'."\r?\$",'Should retrieve database entry');
 t_exitvalue(0,'The upgrade should succeed');
 
-eSpawn(qw(--set clipboardMode=disable get testpw));
+eSpawn(qw(--set clipboardMode=disabled get testpw));
 t_expect('Database upgrade triggered...','Initial upgrade message');
 t_expect('-re','testpw\s*: testpassword'."\r?\$",'Should retrieve database entry');
 t_exitvalue(0,'The upgrade should succeed');
