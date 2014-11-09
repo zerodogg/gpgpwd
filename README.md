@@ -24,7 +24,7 @@ Optional:
 - git
 
 To install all dependencies on a Debian-based distribution:
-    apt-get install libjson-perl libtry-tiny-perl gnupg xclip git
+    apt-get install libjson-perl libtry-tiny-perl gnupg xclip git gnupg-agent
 
 To install all dependencies on a Arch-based distribution:
     pacman -S perl-json perl-try-tiny gnupg xclip git
