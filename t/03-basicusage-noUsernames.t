@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 41;
+use Test::More tests => 42;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -12,6 +12,9 @@ my ($th,$testfile) = tempfile('gpgpwdt-XXXXXXXX',TMPDIR => 1);
 close($th);
 unlink($testfile);
 set_gpgpwd_database_path($testfile);
+
+eSpawn(qw(config storeUsernames=false));
+t_exitvalue(0,'Setting storeUsernames to false should succeed');
 
 eSpawn(qw(add testpassword));
 t_expect('Enter the password you want to use, or press enter to use the random','Password information #1');

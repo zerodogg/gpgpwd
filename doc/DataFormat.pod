@@ -2,7 +2,7 @@
 
 =head1 gpgpwd data format specification
 
-This file specifies the gpgpwd data format, revision 2, as implemented by
+This file specifies the gpgpwd data format, revision 3, as implemented by
 gpgpwd.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
@@ -58,8 +58,25 @@ gpgpwd writes the application name, version and URL in this field.
 =item pwds
 
 This is a key->value structure. The key must be the user-provided name of what
-the password is for, the value must be the base64-encoded gpg-encrypted
-password. The base64 data should be without any newlines.
+the password is for. The value is an additional key->value structure which must contain
+a pwd entry, and may optionally contain a user entry.
+
+Each entry in the pwds structure contains a key->value structure with the following
+data:
+
+=over
+
+=item pwd
+
+This must be the base64-encoded gpg-encrypted password. The base64 data should
+be without any newlines.
+
+=item user
+
+This may optionally contain the username associated with this entry. This
+key may be null or not present at all.
+
+=back
 
 =back
 
@@ -91,21 +108,40 @@ program may be downloaded (which may be able to read the file).
 
 =head1 Backwards compatibility
 
+=head2 With revision 2
+
+Compatibility with revision 2 files is optional. If present, compatibility
+should be achieved by upgrading the revision 2 file to revision 3.
+
+Revision 2 files do not contain a key->value structure within each entry in the
+"pwds" structure and gpgpwdDataVersion must be "2".
+
+The upgrade involves iterating through all entries in the "pwds" structure,
+changing each I<pwds.entry = 'value'> to I<pwds.entry = { pwd: 'value' }>. Once
+this has been done, the gpgpwdDataVersion field must be increased to "3". At
+this point the data structure loaded matches revision 3 as specified in this
+document and the program may write it as a revision 3 file.
+
+=head2 With revision 1
+
 Revision 1 of this data format was never specified, thus no backwards
 compatibility is required. The implementer may optionally implement an
 upgrade path from revision 1 as specified in this section.
 
 Revision 1 files do not contain a signature, and the field gpgpwdDataVersion
-must be "1". The program may thus chose to interperate a file missing a
-signature as it containing a revision 1 data structure and then load that as
-JSON. Once that is done it must verify that gpgpwdDataVersion is "1".
+must be "1". Like revision 2 files, it also does not contain a key->value
+structure within "pwds". The program may thus chose to interperate a file
+missing a signature as it containing a revision 1 data structure and then load
+that as JSON. Once that is done it must verify that gpgpwdDataVersion is "1".
 
 If both of these tests verify then the application may perform the upgrade.
-The upgrade involves iterating through all entries in the "pwds" structure,
+The upgrade involves iterating through all entries in the "pwds" structure (which
+are a set of key->value pairs, where the value is simply a string, the password
+to be stored, see the entry on revision 2 compatibility for more information),
 encrypting each of the values and storing them according to this specification.
-Once this has been done, the gpgpwdDataVersion field must be increased to "2".
-At this point the data structure loaded matches revision 2 as specified in this
-file and the program may write it as a revision 2 file (signed and encrypted,
+Once this has been done, the gpgpwdDataVersion field must be increased to "3".
+At this point the data structure loaded matches revision 3 as specified in this
+file and the program may write it as a revision 3 file (signed and encrypted,
 as previously specified).
 
 =head1 EXAMPLE
@@ -117,10 +153,12 @@ layer of encryption.
     -----BEGIN PGP SIGNED MESSAGE-----
     Hash: SHA1
 
-    {"lastVersion":"0.4",
-    "pwds":{"guildwars2":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."},
-    "gpgpwdDataVersion":"2",
-    "generator":"gpgpwd 0.4 - http://random.zerodogg.org/gpgpwd"}
+    {"lastVersion":"0.6",
+    "pwds":{"example1":{"pwd":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."},
+    "example2":{"pwd":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...",
+    "user":"username"}},
+    "gpgpwdDataVersion":"3",
+    "generator":"gpgpwd 0.6 - http://random.zerodogg.org/gpgpwd"}
     -----BEGIN PGP SIGNATURE-----
     Version: GnuPG v2.0.22 (GNU/Linux)
     Comment: gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d
