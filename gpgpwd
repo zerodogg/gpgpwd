@@ -1004,8 +1004,6 @@ sub verifyUpgradeIntegrity
         print "failed\n";
         unlink($storagePath);
         move($storagePath.'.gpgpwdupgrade',$storagePath);
-        # Push the restored file if needed
-        git('push',$storagePath);
         # Make sure pDie is set to its default mode
         $pDieUsepExit = 1;
         # Error out
