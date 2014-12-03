@@ -543,6 +543,24 @@ sub gpgDecryptString
 {
     my $string = shift;
     my $decryptingKey = shift;
+
+    if(ref($string))
+    {
+        printv(V_DEBUG,'gpgDecryptString() receieved a reference for '.ref($string)."\n");
+        if(ref($string) eq 'HASH')
+        {
+            printv(V_DEBUG,'It contains the following keys: '.join(' ',keys %{$string})."\n");
+        }
+        pDie('Fatal error: gpgDecryptString() attempted to decrypt a reference'."\n".
+            'instead of a string when retrieving the password for '.$decryptingKey.".\n".
+            'This indicates a partial or total corruption of the password database.'."\n".
+            'Manual recovery is likely possible, either by reverting to an earlier'."\n".
+            'revision in git (if git is in use), or by manually decrypting the data.'."\n".
+            'Contact the gpgpwd developers at http://random.zerodogg.org/gpgpwd/support/'."\n".
+            'if you require assistance.'."\n"
+        );
+    }
+
     # Decode the base64 string first
     try
     {
