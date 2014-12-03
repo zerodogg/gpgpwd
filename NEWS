@@ -1,4 +1,5 @@
 Version 0.6
+- Added support for storing usernames
 - Now has a config directory in XDG_CONFIG_HOME/gpgpwd
 - Moved password file to gpgpwd.db in the config directory
     (symlink in place to the old file when upgrading for compatibility)
