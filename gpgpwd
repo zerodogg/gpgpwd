@@ -862,13 +862,18 @@ sub upgradeDataV1toCurrent
     }
     copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
     # Write the data
+    my $oldEnableGit = $enableGit;
+    $enableGit = 0;
     writeData($storagePath,$data);
+    $enableGit = $oldEnableGit;
     print "done\n";
     # Verify the integrity of the upgraded data file
     verifyUpgradeIntegrity();
     # Remove the backup
     unlink($storagePath.'.gpgpwdupgrade');
     print "done - upgrade successfully completed\n";
+    # Push the upgraded file if needed
+    git('push',$storagePath);
     pExit(0);
 }
 
@@ -917,13 +922,18 @@ sub upgradeDataV2toCurrent
     }
     copy($storagePath,$storagePath.'.gpgpwdupgrade') or pDie('Error: Unable to create backup file - '.$!."\n".'Upgrade aborted.'."\n");
     # Write the data
+    my $oldEnableGit = $enableGit;
+    $enableGit = 0;
     writeData($storagePath,$data);
+    $enableGit = $oldEnableGit;
     print "done\n";
     # Verify the integrity of the upgraded data file
     verifyUpgradeIntegrity();
     # Remove the backup
     unlink($storagePath.'.gpgpwdupgrade');
     print "done - upgrade successfully completed\n";
+    # Push the upgraded file if needed
+    git('push',$storagePath);
 
     # Return the new data (we just return it directly, we know that it is valid
     # since verifyUpgradeIntegrity has done a check that includes performing a
