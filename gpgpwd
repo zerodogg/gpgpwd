@@ -962,7 +962,27 @@ sub verifyUpgradeIntegrity
         my $error;
         try
         {
-            loadData($storagePath);
+            my $data = loadData($storagePath);
+            my $decryptedOne = 0;
+            foreach my $k (keys %{ $data->{pwds} })
+            {
+                if (!ref($data->{pwds}->{$k}))
+                {
+                    die('it does not contain a v3 data structure'."\n");
+                }
+                if (!$decryptedOne)
+                {
+                    $decryptedOne = 1;
+                    try
+                    {
+                        gpgDecryptString($data->{pwds}->{$k}->{pwd},$k);
+                    }
+                    catch
+                    {
+                        die('Failed to perform inner data decryption.'."\n");
+                    }
+                }
+            }
         }
         catch
         {
