@@ -899,11 +899,12 @@ sub upgradeDataV2toCurrent
     {
         print "First performing a git pull...\n";
         git('pull',$storagePath);
-        print "Reloading data from git...\n";
+        print "Reloading data from git...";
         ($preV2,$data) = loadJSONStructure($storagePath);
         if($data->{gpgpwdDataVersion} eq '3')
         {
-            print "Data in git has been upgraded. Upgrade aborted\n";
+            print "data in git has already been upgraded.\n\n";
+            return $data;
         }
     }
     print 'Converting ...';
