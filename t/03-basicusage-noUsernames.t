@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 42;
+use Test::More tests => 45;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -17,9 +17,11 @@ eSpawn(qw(config storeUsernames=false));
 t_exitvalue(0,'Setting storeUsernames to false should succeed');
 
 eSpawn(qw(add testpassword));
-t_expect('Enter the password you want to use, or press enter to use the random','Password information #1');
-t_expect('password listed below. Some commands are available, enter /help to list them','Password information #2');
+t_expect('Adding an entry for testpassword','Adding message');
 t_expect('-re','Random password: .*','Random password');
+t_expect('  Enter /help for help.','Help message');
+t_expect('  Enter a password to use a custom password.','Custom password message');
+t_expect('  Just press enter to use the random password.','Random password entry');
 t_expect('Password> ','Password prompt');
 expect_send("1234567890\n");
 t_exitvalue(0,'Adding should succeed');
@@ -35,10 +37,11 @@ t_expect('testpassword        : 1234567890','Retrieve password with typos');
 t_exitvalue(0,'Retrieval with typos should succeed');
 
 eSpawn(qw(add testpassword));
-t_expect('An entry for testpassword already exists, with the password: 1234567890','Existing password');
-t_expect('Enter the password you want to change it to, or press enter to use the random','Changing password information #1');
-t_expect('password listed below. Some commands are available, enter /help to list them','Changing password information #2');
-t_expect('-re','Random password: .*','Random password');
+t_expect('Changing the entry for testpassword','Adding message');
+t_expect('-re','Random password: \S*','Random password');
+t_expect('  Enter /help for help.','Help message');
+t_expect('  Enter your new password to add a new custom password.','Custom password message');
+t_expect('  Just press enter to use the random password.','Random password entry');
 t_expect('Password> ','Password prompt for existing password');
 expect_send("abcdefghij\n");
 t_expect('Changed testpassword from 1234567890 to abcdefghij','Password change');

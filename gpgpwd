@@ -1673,22 +1673,29 @@ sub setPassword
         $copied    = toClipboard($random);
         if (defined $existing)
         {
-            print 'An entry for '.$name.' already exists, with the password: '.$existing."\n";
-            print 'Enter the password you want to change it to, or press enter to use the random'."\n";
-            print 'password listed below. ';
-            if ($config->{storeUsernames} eq 'true')
-            {
-                print 'Enter "-" to keep the existing password.'."\n";
-            }
+            print 'Changing the entry for '.$name."\n";
         }
         else
         {
-            print 'Enter the password you want to use, or press enter to use the random'."\n";
-            print 'password listed below. ';
+            print 'Adding an entry for '.$name."\n";
         }
-        print 'Some commands are available, enter /help to list them'."\n";
+        print "\n";
         print 'Random password: '.$random.$copied."\n";
-        $password = $readLine->readline('Password> ');
+        print '  Enter /help for help.'."\n";
+        if(defined $existing)
+        {
+            if ($config->{storeUsernames} eq 'true')
+            {
+                print '  Enter - to keep the previously stored password ('.$existing.').'."\n";
+            }
+            print '  Enter your new password to add a new custom password.'."\n";
+        }
+        else
+        {
+            print '  Enter a password to use a custom password.'."\n";
+        }
+        print '  Just press enter to use the random password.'."\n";
+        $password = $readLine->readline($prompt);
         # If a user sends EOF, just go through the loop again
         if (!defined $password)
         {
@@ -1758,13 +1765,14 @@ sub setPassword
         print "\n";
         if(defined $existingUser)
         {
-            print "Enter the username for this entry, or just press enter to use\n";
-            print "the current username ($existingUser).\n";
-            print "Enter a single dot (.) to remove the stored username\n";
+            print '  Enter a new username for this entry.'."\n";
+            print '  Just press enter to keep the current username ('.$existingUser.').'."\n";
+            print '  Enter a single dot (".") to remove the stored username.'."\n";
         }
         else
         {
-            print "Enter the username for this entry, or just press enter to not store any username\n";
+            print '  Enter a username for this entry.'."\n";
+            print '  Just press enter to not store any username.'."\n";
         }
         $user = $readLine->readline('Username> ');
         chomp $user;
