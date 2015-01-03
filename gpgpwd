@@ -39,7 +39,7 @@ use constant {
     V_DEBUG => 3,
 };
 
-my $VERSION          = '0.6';
+my $VERSION          = '0.6.1';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
@@ -316,7 +316,33 @@ sub gpgAgentRunning
             return 1;
         }
     }
-    return;
+    # If we're using gpg2 and the gnupg version is 2.1 or later then gpg will
+    # handle starting the agent automatically on its own, so any test gpgpwd
+    # makes for "is the agent running" should result in "yes"
+    if ($gpg[0] eq 'gpg2')
+    {
+        # Cache the state so we only have to fetch the version once
+        state $gpg2autoAgent;
+        if ($gpg2autoAgent)
+        {
+            return $gpg2autoAgent;
+        }
+
+        # Retrieve the gpg2 version number
+        my @gpgVers = split(/\./,getVersionFrom('gpg2', '--version'));
+        # If it is version 2.1 or later, assume the agent is running
+        if ($gpgVers[0] >= 2 && $gpgVers[1] >= 1)
+        {
+            printv(V_DEBUG,'Acting as if the gpg-agent is running due to gpg2 >= 2.1');
+            $gpg2autoAgent = 1;
+            return 1;
+        }
+        # If we reach this far then the gpg version is older than 2.1, and thus
+        # we should cache it as "false" to avoid having to retrieve the version
+        # number again on the next call
+        $gpg2autoAgent = 0;
+    }
+    return 0;
 }
 
 # Purpose: Check if there are any gpg keys available
@@ -2626,8 +2652,6 @@ sub initialize
     {
         print "done\n\n";
     }
-    # Verify gpg keys on any upgrade
-    verifyGPGKeys();
 
     # Make sure we've got gpg or gpg2
     if (!InPath('gpg') && !InPath('gpg2'))
@@ -2648,6 +2672,9 @@ sub initialize
         printv(V_INFO,'Using gpg2 instead of gpg'."\n");
         $gpg[0] = 'gpg2';
     }
+
+    # Verify gpg keys on any upgrade
+    verifyGPGKeys();
 
     # Verify that we're able to read and write to $storagePath, as well as
     # the directory $storagePath is located in (for backup files).

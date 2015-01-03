@@ -1,3 +1,6 @@
+Version 0.6.1
+- Added support for gnupg 2.1 when running without GPG_AGENT_INFO
+
 Version 0.6
 - Added support for storing usernames
 - Now has a config directory in XDG_CONFIG_HOME/gpgpwd
