@@ -1,5 +1,6 @@
-Version 0.6.1
+Version 0.7
 - Added support for gnupg 2.1 when running without GPG_AGENT_INFO
+- Added support for having a default username
 
 Version 0.6
 - Added support for storing usernames
