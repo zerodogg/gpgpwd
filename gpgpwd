@@ -2236,7 +2236,7 @@ sub configCommand
     my @commands = @_;
 
     # We only support a single parameter
-    if (@commands)
+    if (@commands && $sub ne 'remove')
     {
         pDie("Too many parameters to \"gpgpwd config\"\n");
     }
@@ -2248,9 +2248,21 @@ sub configCommand
     }
     else
     {
+        if ($sub eq 'remove')
+        {
+            $sub = shift;
+            if (!defined $config->{$sub})
+            {
+                print "\"$sub\" is not set\n";
+                pExit(1);
+            }
+            delete($config->{$sub});
+            print "Reset \"$sub\" to the default value\n";
+            writeOutConfig();
+        }
         # If a = character is in the input, treat it as a "assign this value to
         # that setting" command
-        if ($sub =~ /=/)
+        elsif ($sub =~ /=/)
         {
             my ($key,$value) = split(/=/,$sub);
             if (!defined $config->{$key})
@@ -3105,6 +3117,10 @@ older) to the new format (v2, used by gpgpwd 0.4 and later).
 Manages the gpgpwd configuration file. Without any parameters it will output
 the current configuration. You may also supply a single configuration key
 to get the value for that key, or a key=value pair to set key to value.
+
+=item B<config remove> I<entry>
+
+Unsets a configuration value (which resets it to the default value)
 
 =back
 

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 22;
+use Test::More tests => 33;
 use File::Temp qw(tempdir);
 use FindBin;
 use lib $FindBin::Bin;
@@ -56,9 +56,32 @@ eSpawn('config','git');
 t_expect('git=false','git should have been changed');
 t_exitvalue(0,'Config retrieval should succeed');
 
+eSpawn('config','remove','git');
+t_expect('Reset "git" to the default value','Reset message');
+t_exitvalue(0,'Config setting should succeed');
+
+eSpawn('config','git');
+t_expect('git=auto','git should have been changed');
+t_exitvalue(0,'Config retrieval should succeed');
+
 eSpawn('config','dataPath='.$tmpdir.'/.gpgpwddb');
 t_exitvalue(0,'Config setting should succeed');
 
 eSpawn('config','dataPath');
 t_expect('dataPath='.$tmpdir.'/.gpgpwddb','dataPath should have been changed');
+t_exitvalue(0,'Config retrieval should succeed');
+
+eSpawn('config','defaultUsername');
+t_expect('defaultUsername','defaultUsername should be empty by default');
+t_exitvalue(0,'Config retrieval should succeed');
+
+eSpawn('config','defaultUsername=testuser');
+t_exitvalue(0,'Config setting should succeed');
+
+eSpawn('config','remove','defaultUsername');
+t_expect('Reset "defaultUsername" to the default value','Reset message');
+t_exitvalue(0,'Config setting should succeed');
+
+eSpawn('config','defaultUsername');
+t_expect('defaultUsername','defaultUsername should be empty again');
 t_exitvalue(0,'Config retrieval should succeed');
