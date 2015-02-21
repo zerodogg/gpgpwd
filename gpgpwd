@@ -323,7 +323,7 @@ sub gpgAgentRunning
     {
         # Cache the state so we only have to fetch the version once
         state $gpg2autoAgent;
-        if ($gpg2autoAgent)
+        if (defined $gpg2autoAgent)
         {
             return $gpg2autoAgent;
         }
