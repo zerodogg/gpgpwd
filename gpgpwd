@@ -856,7 +856,7 @@ sub upgradeDataV1toCurrent
     # conversions.
     if ($preV2 == 0)
     {
-        pDie('Your password database is a v2 file calming to be v1'."\n".
+        pDie('Your password database is a v2 file claiming to be v1'."\n".
             'The password database may be corrupt. Upgrade aborted.'."\n");
     }
     # First perform a git pull
