@@ -1930,7 +1930,8 @@ sub getPWCommand
     }
     elsif(@params != 1)
     {
-        pDie('Too many parameters for "get"'."\n");
+        warn('Warning: Too many parameters for "get", joining all parameters together'."\n".'to a single string'."\n\n");
+        @params = (join(' ',@ARGV));
     }
 
     my $data = loadData($storagePath);
