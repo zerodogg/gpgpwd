@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # gpgpwd
-# Copyright (C) Eskild Hustvedt 2012, 2013, 2014
+# Copyright (C) Eskild Hustvedt 2012, 2013, 2014, 2015
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3286,7 +3286,7 @@ command.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (C) Eskild Hustvedt 2012, 2013, 2014
+Copyright (C) Eskild Hustvedt 2012, 2013, 2014, 2015
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
