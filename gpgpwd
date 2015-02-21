@@ -1394,7 +1394,11 @@ sub getPasswords
         elsif($fuzzy == 1 || $fuzzy == 8)
         {
             my @parts = split(/\W/,$name);
-            next if scalar(@parts) == 1;
+            if( scalar(@parts) == 1)
+            {
+                printv(V_LOG,'Skipping fuzzy test '.$fuzzy.' as there were no /\W/-separated parts in the expression'."\n");
+                next;
+            }
             my $expr = '('.join('|',@parts).')';
             $pattern = '';
             if ($fuzzy == 1)
@@ -1500,6 +1504,10 @@ sub getPasswords
         if ($fuzzy)
         {
             printv(V_LOG,'Trying fuzzy regex ('.$fuzzy.'): '.$pattern."\n");
+        }
+        else
+        {
+            printv(V_LOG,'Trying exact match ('.$fuzzy.'): '.$pattern."\n");
         }
 
         $hasUsernames = getMatches($matches,$data,$regex,$name,$fuzzy,$grantsStartEndBonus);
