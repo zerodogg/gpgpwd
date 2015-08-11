@@ -43,10 +43,10 @@ number should be inserted instead.
 
 =item gpgpwdDataVersion
 
-Contains the version number of the gpgpwd data format. Must be "2" for the
-format specified in this file. If this field is a value other than "2" then the
-program should error out. If it is a value lower than "2" it may perform an
-upgrade to version 2. If it is higher than "2" the program should error out
+Contains the version number of the gpgpwd data format. Must be "3" for the
+format specified in this file. If this field is a value other than "3" then the
+program should error out. If it is a value lower than "3" it may perform an
+upgrade to version 3. If it is higher than "3" the program should error out
 with a message referencing where to find a newer version of the program that
 may support this format version.
 
