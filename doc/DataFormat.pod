@@ -2,7 +2,7 @@
 
 =head1 gpgpwd data format specification
 
-This file specifies the gpgpwd data format, revision 3, as implemented by
+This file specifies the gpgpwd data format, revision 4, as implemented by
 gpgpwd.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
@@ -43,12 +43,14 @@ number should be inserted instead.
 
 =item gpgpwdDataVersion
 
-Contains the version number of the gpgpwd data format. Must be "3" for the
-format specified in this file. If this field is a value other than "3" then the
-program should error out. If it is a value lower than "3" it may perform an
-upgrade to version 3. If it is higher than "3" the program should error out
-with a message referencing where to find a newer version of the program that
-may support this format version.
+Contains the version number of the gpgpwd data format. Must be "4" for the
+format specified in this file. If this field is a value other than "4" then the
+program should error out. If it is a value lower than "4" it may perform an
+upgrade to version 4 (the sole exception is if the value is "3", in which case
+the program may load the file unchanged, as revision 3 files are forwards
+compatible with revision 4). If it is higher than "4" the program should error
+out with a message referencing where to find a newer version of the program
+that may support this format version.
 
 =item generator
 
@@ -58,8 +60,9 @@ gpgpwd writes the application name, version and URL in this field.
 =item pwds
 
 This is a key->value structure. The key must be the user-provided name of what
-the password is for. The value is an additional key->value structure which must contain
-a pwd entry, and may optionally contain a user entry.
+the password is for. The value is an additional key->value structure which must
+either contain a single alias entry, or a pwd entry. In the case of having a
+pwd entry, it may also optionally contain a user entry.
 
 Each entry in the pwds structure contains a key->value structure with the following
 data:
@@ -75,6 +78,15 @@ be without any newlines.
 
 This may optionally contain the username associated with this entry. This
 key may be null or not present at all.
+
+=item alias
+
+This must be the name of another password entry in the database. If an alias entry
+is present then there must not be a pwd or user entry. When an alias entry is found,
+the software must act as if the requested entry is the one that the alias references.
+This must be done recursively, so that an alias may reference another alias. Any software
+must handle depths of at least 10 aliases, but may optionally handle up to 100. A depth
+of more than 100 should result in an error.
 
 =back
 
@@ -108,19 +120,25 @@ program may be downloaded (which may be able to read the file).
 
 =head1 Backwards compatibility
 
+=head2 With revision 3
+
+Revision 3 files are forwards compatible with revision 4. They are identical,
+with the sole exception of not having alias support. Thus, any software implementing
+revision 4 can also read revision 3.
+
 =head2 With revision 2
 
 Compatibility with revision 2 files is optional. If present, compatibility
-should be achieved by upgrading the revision 2 file to revision 3.
+should be achieved by upgrading the revision 2 file to revision 4.
 
 Revision 2 files do not contain a key->value structure within each entry in the
 "pwds" structure and gpgpwdDataVersion must be "2".
 
 The upgrade involves iterating through all entries in the "pwds" structure,
 changing each I<pwds.entry = 'value'> to I<pwds.entry = { pwd: 'value' }>. Once
-this has been done, the gpgpwdDataVersion field must be increased to "3". At
-this point the data structure loaded matches revision 3 as specified in this
-document and the program may write it as a revision 3 file.
+this has been done, the gpgpwdDataVersion field must be increased to "4". At
+this point the data structure loaded matches revision 4 as specified in this
+document and the program may write it as a revision 4 file.
 
 =head2 With revision 1
 
@@ -139,9 +157,9 @@ The upgrade involves iterating through all entries in the "pwds" structure (whic
 are a set of key->value pairs, where the value is simply a string, the password
 to be stored, see the entry on revision 2 compatibility for more information),
 encrypting each of the values and storing them according to this specification.
-Once this has been done, the gpgpwdDataVersion field must be increased to "3".
-At this point the data structure loaded matches revision 3 as specified in this
-file and the program may write it as a revision 3 file (signed and encrypted,
+Once this has been done, the gpgpwdDataVersion field must be increased to "4".
+At this point the data structure loaded matches revision 4 as specified in this
+file and the program may write it as a revision 4 file (signed and encrypted,
 as previously specified).
 
 =head1 EXAMPLE
@@ -157,7 +175,7 @@ layer of encryption.
     "pwds":{"example1":{"pwd":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX..."},
     "example2":{"pwd":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...",
     "user":"username"}},
-    "gpgpwdDataVersion":"3",
+    "gpgpwdDataVersion":"4",
     "generator":"gpgpwd 0.6 - http://random.zerodogg.org/gpgpwd"}
     -----BEGIN PGP SIGNATURE-----
     Version: GnuPG v2.0.22 (GNU/Linux)

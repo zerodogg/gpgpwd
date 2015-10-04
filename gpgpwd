@@ -43,7 +43,7 @@ my $VERSION          = '0.7';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
-my $dataVersion      = 3;
+my $dataVersion      = 4;
 my $enableGit        = false;
 my $verbosity        = 0;
 my $allMatches       = false;
@@ -1091,7 +1091,7 @@ sub loadData
     {
         $data = upgradeDataV2toCurrent();
     }
-    elsif ($data->{gpgpwdDataVersion} ne $dataVersion)
+    elsif ($data->{gpgpwdDataVersion} ne $dataVersion && $data->{gpgpwdDataVersion} != 3)
     {
         pDie($path.' is version '.$data->{gpgpwdDataVersion}.' of the gpgpwd file format'."\n".
             'This version only supports version '.$dataVersion.'.'."\n".
@@ -1320,10 +1320,10 @@ sub getTypoOrMissingRegex
     # Then each part is split into a regex that accepts the
     # current, previous and next character in the word, as well as $fuzzyness
     # characters after this one, which can be anything.
-    # 
+    #
     # Ie. the $name 'test', and $fuzzy=1 will become:
     # [te][tes][est][st]
-    # 
+    #
     # Whereas $fuzzy=4 will become:
     # [te].?.?.?[tes].?.?.?[est].?.?.?[st].?.?.?
     my @parts = split('',$pattern);
@@ -1575,6 +1575,34 @@ sub getPasswords
     return 1;
 }
 
+# Purpose: Resolve an alias
+# Usage: resolvedName = resolveAlias(data,aliasName,originalName);
+sub resolveAlias
+{
+    my $data = shift;
+    my $alias = shift;
+    my $orig = shift;
+    my $result;
+    my $loopN = 100;
+    while(--$loopN)
+    {
+        if ($data->{pwds}->{$alias} && $data->{pwds}->{$alias}->{alias})
+        {
+            $alias = $data->{pwds}->{$alias}->{alias};
+        }
+        else
+        {
+            $result = $alias;
+        }
+    }
+    if (!defined $result)
+    {
+        die('Fatal error: failed to resolve alias for "'.$orig.'"'."\n".
+            'The depth could be too deep or there are circular references'."\n");
+    }
+    return $result;
+}
+
 # Purpose: Get data entries that match a given regex
 # Usage: $hasUsernames = getMatches($data,$regex,$name);
 # hasUsernames is a bool, true if any of the matched entries had a username
@@ -1653,11 +1681,23 @@ sub getMatches
                     }
                 }
             }
+            if(defined $data->{pwds}->{$key}->{alias})
+            {
+                printv(V_DEBUG,$key.' is aliased to '.$data->{pwds}->{$key}->{alias}.' - switching to it');
+                $key = resolveAlias($data,$key,$key);
+            }
             if(defined $data->{pwds}->{$key}->{user})
             {
                 printv(V_DEBUG,'Granting a -0.5 bonus to '.$key.' due to having a user entry'."\n");
                 $entryScore += -0.5;
                 $hasUsernames = 1;
+            }
+            if (defined $matches->{$key})
+            {
+                if($matches->{$key}->{score} >= $entryScore)
+                {
+                    next;
+                }
             }
             $matches->{$key} = {
                 password => $data->{pwds}->{$key}->{pwd},
@@ -1978,6 +2018,14 @@ sub removePWCommand
         my $hadPassword = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
         print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
         delete($data->{pwds}->{$name});
+        foreach my $entry (keys %{$data->{pwds}})
+        {
+            if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $name)
+            {
+                print 'Also removed the alias "'.$entry.'" which was pointing to "'.$name.'"'."\n";
+                delete($data->{pwds}->{$entry});
+            }
+        }
     }
     else
     {
@@ -2050,6 +2098,53 @@ sub renamePWCommand
     writeData($storagePath,$data);
 
     return 1;
+}
+
+# Purpose: Add or change an alias
+sub aliasCommand
+{
+    my $to = shift;
+    my $name = shift;
+    my $existed;
+    if (!defined $to || !defined $name)
+    {
+        print "Usage: alias <to> <name>\n";
+        print "   <to> is a password entry that already exists\n";
+        print "   <name> is the name of the alias itself\n";
+        exit(1);
+    }
+    git('pull',$storagePath);
+    my $data = loadData($storagePath);
+    statusOut('');
+    if (!defined $data->{pwds}->{$to})
+    {
+        die('There is no existing password entry for "'.$to.'"'."\n");
+    }
+    if (defined $data->{pwds}->{$name})
+    {
+        if (!defined $data->{pwds}->{$name}->{alias})
+        {
+            die('A password entry for "'.$name.'" already exists and is not an alias'."\n");
+        }
+        $existed = $data->{pwds}->{$name}->{alias};
+    }
+    $data->{pwds}->{$name} = {
+        alias => $to
+    };
+    if ($existed)
+    {
+        if ($existed eq $to)
+        {
+            print 'The alias "'.$name.'" already exists and points to "'.$to.'"'."\n";
+            exit(0);
+        }
+        print 'Changed the alias for "'.$name.'" from "'.$existed.'" to "'.$to.'"'."\n";
+    }
+    else
+    {
+        print 'Added an alias for "'.$name.'" that references "'.$to.'"'."\n";
+    }
+    writeData($storagePath,$data);
 }
 
 # = = = = = = =
@@ -2487,6 +2582,7 @@ sub usage
     printHelp('' , 'set <name>'         , 'Add or change password for <name>');
     printHelp('' , 'remove <name>'      , 'Remove the entry for <name>');
     printHelp('' , 'rename <old> <new>' , 'Rename the entry for <old> to <new>');
+    printHelp('' , 'alias <to> <name>'  , 'Create an alias entry <name> that points to the entry for <to>');
     printHelp('' , 'batchadd <file>'    , 'Batch add passwords from a file, see the manpage for the file syntax');
     printHelp('' , 'config'             , 'Retrieve or set settings in the gpgpwd config file');
     printHelp('' , 'git'                , 'Perform git commands');
@@ -2980,6 +3076,10 @@ sub main
     {
         configCommand(@ARGV);
     }
+    elsif($command eq 'alias')
+    {
+        aliasCommand(@ARGV);
+    }
     else
     {
         if (@ARGV == 0)
@@ -3102,6 +3202,11 @@ Remove the password for NAME from the database.
 =item B<rename> I<OLDNAME> I<NEWNAME>
 
 Rename the entry for OLDNAME to NEWNAME.
+
+=item B<alias> I<TO> I<NAME>
+
+This creates an alias (think symlink) to I<TO> named I<NAME>. That means that you
+can enter 'get I<NAME>' and gpgpwd will respond with the entry for I<TO> instead.
 
 =item B<batchadd> I<FILE>
 
