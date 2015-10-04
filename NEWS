@@ -2,6 +2,7 @@ Version 0.7
 - Added support for gnupg 2.1 when running without GPG_AGENT_INFO
 - Added support for having a default username
 - Fixed auto-pulling in recent versions of GNOME
+- Added 'git initremote' for initializing an empty git remote
 
 Version 0.6
 - Added support for storing usernames

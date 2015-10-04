@@ -2103,6 +2103,7 @@ sub git
     if (!$hasUpstream)
     {
         print "Warning: git pull/push disabled: no remote set for the \"master\" branch\n";
+        print "If you are pushing to a new remote, try: ".basename($0)." git initremote [remote]\n";
         return;
     }
 
@@ -2158,6 +2159,12 @@ sub gitCommand
     elsif($subcommand eq 'init')
     {
         initGitRepo(1,$force);
+    }
+    elsif($subcommand eq 'initremote')
+    {
+        my $remote = shift(@params) // 'origin';
+        chdir(dirname($storagePath));
+        exit(psystem(qw(git push --set-upstream),$remote,'master'));
     }
     elsif($subcommand eq 'clone')
     {
@@ -3128,6 +3135,11 @@ again, in case the password you wanted has changed.
 
 Clone an existing gpgpwd git repository from the git URL supplied (supports all
 git URLs that your native git supports).
+
+=item B<git initremote> I<remote?>
+
+Initializes a fresh remote. Will push our git repository to the remote and
+set our master branch to track it.
 
 =item B<git pull>, B<git fetch>, B<git remote>, B<git branch>
 
