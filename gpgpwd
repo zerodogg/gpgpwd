@@ -927,7 +927,7 @@ sub upgradeDataV2toCurrent
         git('pull',$storagePath);
         print "Reloading data from git...";
         ($preV2,$data) = loadJSONStructure($storagePath);
-        if($data->{gpgpwdDataVersion} eq '3')
+        if($data->{gpgpwdDataVersion} >= 3)
         {
             print "data in git has already been upgraded.\n\n";
             return $data;
