@@ -78,4 +78,5 @@ fatdistrib: clean test man fat
 	rm -f gpgpwd.fat gpgpwd.1
 # Run tests
 test: sanity
+	@perl '-e' 'eval("use Expect;1") or die("Requires the Expect module to be installed\n")'
 	@perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
