@@ -2080,15 +2080,17 @@ sub git
     {
         if (
             (defined $ENV{SSH_AGENT_PID}) ||
-            (defined $ENV{GNOME_KEYRING_PID} && defined $ENV{SSH_AUTH_SOCK})
-        )
+            (
+                (defined $ENV{GNOME_KEYRING_PID} || (defined $ENV{XDG_CURRENT_DESKTOP} && $ENV{XDG_CURRENT_DESKTOP} == 'gnome') )
+                && defined $ENV{SSH_AUTH_SOCK})
+            )
         {
             $command = 'pull';
         }
         else
         {
             $command = 'noop';
-            printv(V_INFO,'Not pulling since SSH_AGENT_PID is not set, and neither is GNOME_KEYRING_PID and SSH_AUTH_SOCK'."\n");
+            printv(V_INFO,'Not pulling since SSH_AGENT_PID is not set, and neither is GNOME_KEYRING_PID or XDG_CURRENT_DESKTOP=gnome and SSH_AUTH_SOCK'."\n");
         }
     }
 
