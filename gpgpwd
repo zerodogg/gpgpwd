@@ -2081,7 +2081,7 @@ sub git
         if (
             (defined $ENV{SSH_AGENT_PID}) ||
             (
-                (defined $ENV{GNOME_KEYRING_PID} || (defined $ENV{XDG_CURRENT_DESKTOP} && $ENV{XDG_CURRENT_DESKTOP} == 'gnome') )
+                (defined $ENV{GNOME_KEYRING_PID} || (defined $ENV{XDG_CURRENT_DESKTOP} && $ENV{XDG_CURRENT_DESKTOP} eq 'gnome') )
                 && defined $ENV{SSH_AUTH_SOCK})
             )
         {
