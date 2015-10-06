@@ -570,6 +570,14 @@ sub gpgDecryptString
     my $string = shift;
     my $decryptingKey = shift;
 
+    if (!defined $string)
+    {
+        pDie('Fatal error: gpgDecryptString() attempted to decrypt an empty (undef)'."\n".
+            'value. This indicates either a bug in gpgpwd (most likely) or a partial or'."\n".
+            'total corruption of the password database.'."\n".
+            'Contact the gpgpwd developers at http://random.zerodogg.org/gpgpwd/bugs/'."\n"
+        );
+    }
     if(ref($string))
     {
         printv(V_DEBUG,'gpgDecryptString() receieved a reference for '.ref($string)."\n");
