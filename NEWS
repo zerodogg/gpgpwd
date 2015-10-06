@@ -3,6 +3,8 @@ Version 0.7
 - Added support for having a default username
 - Fixed auto-pulling in recent versions of GNOME
 - Added 'git initremote' for initializing an empty git remote
+- Added aliases, providing a means to have multiple names for a single
+    database entry
 
 Version 0.6
 - Added support for storing usernames
