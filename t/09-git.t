@@ -63,60 +63,67 @@ t_exitvalue(0,'initremote should succeed');
 eSpawn('git','push');
 t_exitvalue(0,'git push command should succeed');
 
-# Switch to a clean root
-$ENV{XDG_CONFIG_HOME} = $secondTmpdir;
+SKIP:
+{
+    if ( (!defined $ENV{SSH_AGENT_PID}) && ! ((defined $ENV{GNOME_KEYRING_PID} || (defined $ENV{XDG_CURRENT_DESKTOP} && $ENV{XDG_CURRENT_DESKTOP} eq 'GNOME') )&& defined $ENV{SSH_AUTH_SOCK}) )
+    {
+        skip('No ssh agent detected, skipping the remaining tests',25);
+    }
+    # Switch to a clean root
+    $ENV{XDG_CONFIG_HOME} = $secondTmpdir;
 
-eSpawn('git','clone',$upstream);
-t_expect('-re','Git repository initialized in.*','Success message');
-t_exitvalue(0,'Clone should succeed');
-ok(-d $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo','Git repo dir should be created');
-ok(-d $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo/.git','Git repo dir should contain .git');
+    eSpawn('git','clone',$upstream);
+    t_expect('-re','Git repository initialized in.*','Success message');
+    t_exitvalue(0,'Clone should succeed');
+    ok(-d $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo','Git repo dir should be created');
+    ok(-d $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo/.git','Git repo dir should contain .git');
 
-ok(-l $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gpgpwd.db','Base gpgpwd.db should be a symlink');
-is(realpath($ENV{XDG_CONFIG_HOME}.'/gpgpwd/gpgpwd.db'),$ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo/gpgpwd.db','Base gpgpwd.db should be symlinked to the git gpgpwd.db');
+    ok(-l $ENV{XDG_CONFIG_HOME}.'/gpgpwd/gpgpwd.db','Base gpgpwd.db should be a symlink');
+    is(realpath($ENV{XDG_CONFIG_HOME}.'/gpgpwd/gpgpwd.db'),$ENV{XDG_CONFIG_HOME}.'/gpgpwd/gitrepo/gpgpwd.db','Base gpgpwd.db should be symlinked to the git gpgpwd.db');
 
-# Git should have been enabled
-eSpawn('config','git');
-t_expect('git=auto','Git should have been enabled');
-t_exitvalue(0,'Config retrieval should succeed');
+    # Git should have been enabled
+    eSpawn('config','git');
+    t_expect('git=auto','Git should have been enabled');
+    t_exitvalue(0,'Config retrieval should succeed');
 
-# Verify that it is using the correct file
-eSpawn('--debuginfo');
-t_expect('Data file                   : '.$secondTmpdir.'/gpgpwd/gitrepo/gpgpwd.db','Should be using the git data file');
-t_expect('-re','flags\s+:\s+.*enableGit.*','It should auto-enable git');
-t_exitvalue(0,'Debuginfo request should succeed');
+    # Verify that it is using the correct file
+    eSpawn('--debuginfo');
+    t_expect('Data file                   : '.$secondTmpdir.'/gpgpwd/gitrepo/gpgpwd.db','Should be using the git data file');
+    t_expect('-re','flags\s+:\s+.*enableGit.*','It should auto-enable git');
+    t_exitvalue(0,'Debuginfo request should succeed');
 
-# Should be able to retrieve the password that we just cloned
-eSpawn(qw(get testpassword));
-t_expect('testpassword        : 1234567890','Retrieve password');
-t_exitvalue(0,'Retrieval command should succeed');
+    # Should be able to retrieve the password that we just cloned
+    eSpawn(qw(get testpassword));
+    t_expect('testpassword        : 1234567890','Retrieve password');
+    t_exitvalue(0,'Retrieval command should succeed');
 
-# Change the test password
-eSpawn(qw(set testpassword));
-t_expect('Password> ','Password prompt');
-expect_send("12x4567890\n");
-t_expect('Username> ','Username prompt');
-expect_send("username\n");
-t_expect("Pushing git repository...",'Should output a push message');
-t_exitvalue(0,'Changing should succeed');
+    # Change the test password
+    eSpawn(qw(set testpassword));
+    t_expect('Password> ','Password prompt');
+    expect_send("12x4567890\n");
+    t_expect('Username> ','Username prompt');
+    expect_send("username\n");
+    t_expect("Pushing git repository...",'Should output a push message');
+    t_exitvalue(0,'Changing should succeed');
 
-# Verify the change
-eSpawn(qw(--no-xclip get testpassword));
-t_expect('testpassword        : 12x4567890','Verified that the password was changed');
-t_exitvalue(0,'Retrieval command should succeed');
+    # Verify the change
+    eSpawn(qw(--no-xclip get testpassword));
+    t_expect('testpassword        : 12x4567890','Verified that the password was changed');
+    t_exitvalue(0,'Retrieval command should succeed');
 
-# Switch back to the initial root
-$ENV{XDG_CONFIG_HOME} = $tmpdir;
+    # Switch back to the initial root
+    $ENV{XDG_CONFIG_HOME} = $tmpdir;
 
-# Should be able to retrieve the password from upstream
-eSpawn(qw(--no-xclip get testpassword));
-t_expect('testpassword        : 1234567890','Retrieve old password');
-t_expect('File updated by git, re-reading passwords:','Should re-read the password list due to git');
-t_expect('testpassword        : 12x4567890','Retrieve new password');
-t_exitvalue(0,'Retrieval command should succeed');
+    # Should be able to retrieve the password from upstream
+    eSpawn(qw(--no-xclip get testpassword));
+    t_expect('testpassword        : 1234567890','Retrieve old password');
+    t_expect('File updated by git, re-reading passwords:','Should re-read the password list due to git');
+    t_expect('testpassword        : 12x4567890','Retrieve new password');
+    t_exitvalue(0,'Retrieval command should succeed');
 
-eSpawn('git','pull');
-t_exitvalue(0,'git pull should succeed');
+    eSpawn('git','pull');
+    t_exitvalue(0,'git pull should succeed');
 
-eSpawn('git','fetch','master');
-t_exitvalue(0,'git fetch master should succeed');
+    eSpawn('git','fetch','master');
+    t_exitvalue(0,'git fetch master should succeed');
+};
