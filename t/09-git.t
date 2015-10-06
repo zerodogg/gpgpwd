@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 40;
+use Test::More tests => 43;
 use File::Temp qw(tempdir);
 use FindBin;
 use Cwd qw(realpath getcwd);
@@ -97,7 +97,13 @@ t_expect('Password> ','Password prompt');
 expect_send("12x4567890\n");
 t_expect('Username> ','Username prompt');
 expect_send("username\n");
+t_expect("Pushing git repository...",'Should output a push message');
 t_exitvalue(0,'Changing should succeed');
+
+# Verify the change
+eSpawn(qw(--no-xclip get testpassword));
+t_expect('testpassword        : 12x4567890','Verified that the password was changed');
+t_exitvalue(0,'Retrieval command should succeed');
 
 # Switch back to the initial root
 $ENV{XDG_CONFIG_HOME} = $tmpdir;
