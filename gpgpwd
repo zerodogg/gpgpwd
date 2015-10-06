@@ -2031,18 +2031,18 @@ sub removePWCommand
         {
             my $hadPassword = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
             print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
-            delete($data->{pwds}->{$name});
-            my @deepCheck = ($name);
-            while(my $value = shift(@deepCheck))
+        }
+        delete($data->{pwds}->{$name});
+        my @deepCheck = ($name);
+        while(my $value = shift(@deepCheck))
+        {
+            foreach my $entry (keys %{$data->{pwds}})
             {
-                foreach my $entry (keys %{$data->{pwds}})
+                if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $value)
                 {
-                    if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $value)
-                    {
-                        print 'Also removed the alias "'.$entry.'" which was pointing to "'.$value.'"'."\n";
-                        delete($data->{pwds}->{$entry});
-                        push(@deepCheck,$entry);
-                    }
+                    print 'Also removed the alias "'.$entry.'" which was pointing to "'.$value.'"'."\n";
+                    delete($data->{pwds}->{$entry});
+                    push(@deepCheck,$entry);
                 }
             }
         }
