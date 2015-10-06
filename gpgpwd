@@ -2023,15 +2023,27 @@ sub removePWCommand
     statusOut('');
     if ($data->{pwds}->{$name})
     {
-        my $hadPassword = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
-        print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
-        delete($data->{pwds}->{$name});
-        foreach my $entry (keys %{$data->{pwds}})
+        if ($data->{pwds}->{$name}->{alias})
         {
-            if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $name)
+            print 'Removed '.$name.' (which was an alias pointing to '.$data->{pwds}->{$name}->{alias}.')'."\n";
+        }
+        else
+        {
+            my $hadPassword = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
+            print 'Removed '.$name.' (with the password '.$hadPassword.')'."\n";
+            delete($data->{pwds}->{$name});
+            my @deepCheck = ($name);
+            while(my $value = shift(@deepCheck))
             {
-                print 'Also removed the alias "'.$entry.'" which was pointing to "'.$name.'"'."\n";
-                delete($data->{pwds}->{$entry});
+                foreach my $entry (keys %{$data->{pwds}})
+                {
+                    if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $value)
+                    {
+                        print 'Also removed the alias "'.$entry.'" which was pointing to "'.$value.'"'."\n";
+                        delete($data->{pwds}->{$entry});
+                        push(@deepCheck,$entry);
+                    }
+                }
             }
         }
     }
