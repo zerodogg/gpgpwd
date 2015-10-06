@@ -2125,9 +2125,18 @@ sub git
     elsif($command eq 'push')
     {
         print 'Pushing git repository...'."\n";
-        psystem('git','add',basename($path));
-        psystem('git','commit','--quiet','-m','Update by gpgpwd',basename($path));
-        psystem('git','push','--quiet');
+        if(psystem('git','add',basename($path)) != 0)
+        {
+            print "  Warning: Error pushing the git repo: 'git add' command failed\n";
+        }
+        elsif(psystem('git','commit','--quiet','-m','Update by gpgpwd',basename($path)) != 0)
+        {
+            print "  Warning: Error pushing the git repo: 'git commit' command failed\n";
+        }
+        elsif(psystem('git','push','--quiet') != 0)
+        {
+            print "  Warning: Error pushing the git repo: 'git push' command failed\n";
+        }
     }
     elsif($command ne 'noop')
     {
