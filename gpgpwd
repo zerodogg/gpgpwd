@@ -1734,6 +1734,14 @@ sub setPassword
     my $existingUser;
     if(defined $data->{pwds}->{$name})
     {
+        if(defined $data->{pwds}->{$name}->{alias})
+        {
+            statusOut('');
+            print '"'.$name.'" already exists and is an alias. You must first remove the alias before you'."\n";
+            print 'can add a password with that name (or you can use the "alias" command to change what'."\n";
+            print ' "'.$name.'" is an alias for).'."\n";
+            exit(1);
+        }
         $existing = gpgDecryptString($data->{pwds}->{$name}->{pwd},$name);
         $existingUser = $data->{pwds}->{$name}->{user};
     }
