@@ -5,6 +5,7 @@ Version 0.7
 - Added 'git initremote' for initializing an empty git remote
 - Added aliases, providing a means to have multiple names for a single
     database entry
+- Improved test coverage
 
 Version 0.6
 - Added support for storing usernames

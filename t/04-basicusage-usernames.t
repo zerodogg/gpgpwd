@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 80;
+use Test::More tests => 84;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -160,5 +160,13 @@ t_exitvalue(0,'Changing should succeed');
 eSpawn(qw(-s clipboardMode=disabled get changingonlyone));
 t_expect('-re','changingonlyone\s*: newpw'."\r?\$",'Should retrieve the entry with no username');
 t_exitvalue(0,'Getting a the password entry should succeed');
+
+eSpawn(qw(remove testpword));
+t_expect('Removed testpword (with the password 1234567890)','Main removal message');
+t_exitvalue(0,'Removal should succeed');
+
+eSpawn(qw(get testpword));
+t_expect('(no passwords found for "testpword")','Fail to retrieve the removed entry');
+t_exitvalue(0,'Retrieval of removed entry should exit with true');
 
 unlink($testfile);

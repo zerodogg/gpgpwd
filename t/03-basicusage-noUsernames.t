@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 45;
+use Test::More tests => 51;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -93,5 +93,16 @@ t_expect('Password> ','Password prompt');
 expect_send("1234567890\n");
 t_exitvalue(0,'Adding should succeed');
 
+eSpawn(qw(remove testpword));
+t_expect('Removed testpword (with the password 1234567890)','Main removal message');
+t_exitvalue(0,'Removal should succeed');
+
+eSpawn(qw(get testpword));
+t_expect('(no passwords found for "testpword")','Fail to retrieve the removed entry');
+t_exitvalue(0,'Retrieval of removed entry should exit with true');
+
+eSpawn(qw(remove doesnotexist));
+t_expect('No entry named doesnotexist found. Doing nothing.');
+t_exitvalue(0,'Removing nothing should succeed');
 
 unlink($testfile);
