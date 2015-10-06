@@ -63,7 +63,7 @@ my $stderr;
 open($stderr, '>&',\*STDERR);
 open(STDERR,'>','/dev/null');
 open2(my $out, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
-print {$o} '{ "pwds":{"testpw":{"pwd:":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}}, "gpgpwdDataVersion":3 }'."\n";
+print {$o} '{ "pwds":{"testpw":{"pwd":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}}, "gpgpwdDataVersion":3 }'."\n";
 close($o);
 {
     local $/ = undef;
