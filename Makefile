@@ -51,7 +51,7 @@ sanity:
 man:
 	pod2man --name "gpgpwd" --center "" --release "gpgpwd $(VERSION)" ./gpgpwd ./gpgpwd.1
 # Create the tarball
-distrib: clean test man
+distrib: clean disttest man
 	mkdir -p gpgpwd-$(VERSION)
 	cp -r $(DISTFILES) ./gpgpwd-$(VERSION)
 	tar -jcvf gpgpwd-$(VERSION).tar.bz2 ./gpgpwd-$(VERSION)
@@ -67,8 +67,8 @@ buildfat:
 	chmod +x gpgpwd.fat
 testfat:
 	perl -c gpgpwd.fat
-	GPGPWD_TEST_BINNAME="gpgpwd.fat" make test
-fatdistrib: clean test man fat
+	GPGPWD_TEST_BINNAME="gpgpwd.fat" make disttest
+fatdistrib: clean disttest man fat
 	mkdir -p gpgpwd-fat-$(VERSION)
 	cp -r $(DISTFILES) ./gpgpwd-fat-$(VERSION)
 	cp gpgpwd.fat gpgpwd-fat-$(VERSION)
@@ -77,6 +77,9 @@ fatdistrib: clean test man fat
 	rm -rf fat-local fatlib
 	rm -f gpgpwd.fat gpgpwd.1
 # Run tests
+GPGPWD_TEST_NO_IMPORTANT_SKIP ?= 0
 test: sanity
 	@perl '-e' 'eval("use Expect;1") or die("Requires the Expect module to be installed\n")'
-	@perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
+	@env GPGPWD_TEST_NO_IMPORTANT_SKIP=$(GPGPWD_TEST_NO_IMPORTANT_SKIP) perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
+disttest: GPGPWD_TEST_NO_IMPORTANT_SKIP=1
+disttest: test

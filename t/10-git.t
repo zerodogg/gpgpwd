@@ -67,6 +67,7 @@ SKIP:
 {
     if ( (!defined $ENV{SSH_AGENT_PID}) && ! ((defined $ENV{GNOME_KEYRING_PID} || (defined $ENV{XDG_CURRENT_DESKTOP} && $ENV{XDG_CURRENT_DESKTOP} eq 'GNOME') )&& defined $ENV{SSH_AUTH_SOCK}) )
     {
+        $ENV{GPGPWD_TEST_NO_IMPORTANT_SKIP} && die('No ssh agent detected, can not complete tests');
         skip('No ssh agent detected, skipping the remaining tests',25);
     }
     # Switch to a clean root
