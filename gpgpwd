@@ -333,7 +333,7 @@ sub gpgAgentRunning
         # If it is version 2.1 or later, assume the agent is running
         if ($gpgVers[0] >= 2 && $gpgVers[1] >= 1)
         {
-            printv(V_DEBUG,'Acting as if the gpg-agent is running due to gpg2 >= 2.1');
+            printv(V_DEBUG,'Acting as if the gpg-agent is running due to gpg2 >= 2.1'."\n");
             $gpg2autoAgent = 1;
             return 1;
         }
@@ -1691,7 +1691,7 @@ sub getMatches
             }
             if(defined $data->{pwds}->{$key}->{alias})
             {
-                printv(V_DEBUG,$key.' is aliased to '.$data->{pwds}->{$key}->{alias}.' - switching to it');
+                printv(V_DEBUG,$key.' is aliased to '.$data->{pwds}->{$key}->{alias}.' - switching to it'."\n");
                 $key = resolveAlias($data,$key,$key);
             }
             if(defined $data->{pwds}->{$key}->{user})
@@ -2789,7 +2789,7 @@ sub initialize
         move( $ENV{HOME}.'/.gpgpwddb', $defaultStoragePath ) or die("Failed to move old database ($ENV{HOME}/.gpgpwddb) to the new location at $defaultStoragePath: $!\n");
         # Compatibility symlink
         symlink($defaultStoragePath,  $ENV{HOME}.'/.gpgpwddb');
-        printv(V_LOG,'Migrated from legacy database location');
+        printv(V_LOG,'Migrated from legacy database location'."\n");
     }
     # Parse and configure the clipboardMode set in the config file
     if (defined $config->{clipboardMode} && scalar(@clipboardTargets) == 0)
