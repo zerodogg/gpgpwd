@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use 5.010;
-use Test::More tests => 51;
+use Test::More tests => 60;
 use File::Temp qw(tempfile);
 use FindBin;
 use lib $FindBin::Bin;
@@ -104,3 +104,22 @@ eSpawn(qw(remove aliased));
 t_expect('Removed aliased (which was an alias pointing to testpassword)','Main removal message');
 t_expect('Also removed the alias "secondlevel" which was pointing to "aliased"','Second layer alias message');
 t_exitvalue(0,'Removal should succeed');
+
+eSpawn(qw(add testpassword));
+t_expect('Password> ','Password prompt');
+expect_send("1234567890\n");
+t_expect('Username> ','Username prompt');
+expect_send("username\n");
+t_exitvalue(0,'Adding should succeed');
+
+eSpawn(qw(alias testpassword aliased));
+t_expect('Added an alias for "aliased" that references "testpassword"','Message about the alias being added');
+t_exitvalue(0,'Adding an alias should succeed');
+
+eSpawn(qw(rename testpassword renamed));
+t_expect('Renamed the entry for testpassword to renamed','Renaming entry');
+t_exitvalue(0,'Renaming should succeed');
+
+eSpawn(qw(get aliased));
+t_expect('-re','testpassword        : 1234567890\s+(\S+\s+)?username','Retrieve entry');
+t_exitvalue(0,'Retrieval of alias from renamed entry should succeed');
