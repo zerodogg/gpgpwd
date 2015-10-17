@@ -1608,6 +1608,12 @@ sub resolveAlias
         die('Fatal error: failed to resolve alias for "'.$orig.'"'."\n".
             'The depth could be too deep or there are circular references'."\n");
     }
+    if (!defined $data->{pwds}->{$result})
+    {
+        die('Fatal error: failed to resolve alias for "'.$orig.'"'."\n".
+            'The depth could be too deep or there are dangling references'."\n");
+    }
+    printv(V_LOG,'Resolved alias entry '.$orig.' to '.$result."\n");
     return $result;
 }
 
