@@ -329,7 +329,16 @@ sub gpgAgentRunning
         }
 
         # Retrieve the gpg2 version number
-        my @gpgVers = split(/\./,getVersionFrom('gpg2', '--version'));
+        my $gpg2VerNoRaw = getVersionFrom(qw(gpg2 --version));
+        my @gpgVers = (0,0);
+        if (defined $gpg2VerNoRaw)
+        {
+            @gpgVers = split(/\./,$gpg2VerNoRaw);
+        }
+        else
+        {
+            printv(V_DEBUG,'Failed to retrieve version number from gpg2, using 0.0 as version number'."\n");
+        }
         # If it is version 2.1 or later, assume the agent is running
         if ($gpgVers[0] >= 2 && $gpgVers[1] >= 1)
         {
@@ -2936,8 +2945,12 @@ sub getVersionFrom
         close($err);
     }
     close($in);close($out);
-    $data =~ s/^\D+(\S+).+/$1/s;
-    return $data;
+    if(defined $data)
+    {
+        $data =~ s/^\D+(\S+).+/$1/s;
+        return $data;
+    }
+    return;
 }
 
 # Purpose: Output some information useful for debugging and then exit
