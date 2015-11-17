@@ -56,6 +56,7 @@ my @gpgVers = split(/\./,getVersionFrom('gpg2', '--version'));
 my $tmpdir = tempdir('gpgpwd-testpath-XXXXXXXX',TMPDIR => 1, CLEANUP => 1);
 open(my $o,'>',$tmpdir.'/gpg2');
 print {$o} "#!/usr/bin/perl\n";
+print {$o} 'if(@ARGV && grep(/--version/,@ARGV)) { print "'.$gpgVers[0].'.'.$gpgVers[1].'\n"; }'."\n";
 print {$o} "exit(1);\n";
 close($o);
 chmod(0700,$tmpdir.'/gpg2');
