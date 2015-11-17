@@ -2127,6 +2127,14 @@ sub renamePWCommand
     $data->{pwds}->{$new} = $entry;
     delete($data->{pwds}->{$old});
 
+    foreach my $entry (keys %{$data->{pwds}})
+    {
+        if (defined $data->{pwds}->{$entry}->{alias} && $data->{pwds}->{$entry}->{alias} eq $old)
+        {
+            $data->{pwds}->{$entry}->{alias} = $new;
+        }
+    }
+
     print 'Renamed the entry for '.$old.' to '.$new."\n";
 
     writeData($storagePath,$data);

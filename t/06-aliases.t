@@ -121,5 +121,5 @@ t_expect('Renamed the entry for testpassword to renamed','Renaming entry');
 t_exitvalue(0,'Renaming should succeed');
 
 eSpawn(qw(get aliased));
-t_expect('-re','testpassword        : 1234567890\s+(\S+\s+)?username','Retrieve entry');
+t_expect('-re','renamed             : 1234567890\s+(\S+\s+)?username','Retrieve entry');
 t_exitvalue(0,'Retrieval of alias from renamed entry should succeed');
