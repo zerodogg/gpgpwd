@@ -7,7 +7,8 @@ perl:
   - "5.14"
   - "5.12"
   - "5.10"
-install:
+before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libjson-perl libtry-tiny-perl gnupg xclip git gnupg-agent libexpect-perl
+  - sudo apt-get install -qq gnupg xclip git gnupg-agent
+install: cpanm --quiet --notest JSON Try::Tiny Expect
 script: make test
