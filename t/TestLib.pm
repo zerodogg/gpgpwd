@@ -102,9 +102,9 @@ sub getCmd
     }
     if ($useRawCMD)
     {
-        return ($dir.'/../'.$binName,@_);
+        return ('perl',$dir.'/../'.$binName,@_);
     }
-    return ($dir.'/../'.$binName,'--password-file',$testfile,@_);
+    return ('perl',$dir.'/../'.$binName,'--password-file',$testfile,@_);
 }
 
 1;
