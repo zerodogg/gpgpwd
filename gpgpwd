@@ -39,7 +39,7 @@ use constant {
     V_DEBUG => 3,
 };
 
-my $VERSION          = '0.7';
+my $VERSION          = '0.7.1';
 my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
@@ -713,10 +713,11 @@ sub verifyMetadataSignature
 
     # Parse out the signature key
     my $sigKey = $signature;
-    $sigKey =~ s/.*gpg: Signature made .*? using \S+ key ID (\S+).*/$1/s;
+    $sigKey =~ s/.*(gpg: Signature made .*? using \S+ key ID |gpg:\s+using\s+\S+\s+key\s+)(\S+).*/$2/s;
     # If there are still spaces left then we failed to parse the key
     if ($sigKey =~ /\s/)
     {
+        printv(V_DEBUG,'Signature key parsed to be "'.$sigKey.'"'."\n");
         pDie('Signature validation failed: unable to parse out the sigkey from gpg output'."\n");
     }
 

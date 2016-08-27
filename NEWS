@@ -1,3 +1,8 @@
+Version 0.7.1
+- Properly support renaming of alias targets
+- Fixed handling of cases where gpg --version fails
+- Added support for gpg 2.1.15
+
 Version 0.7
 - Added support for gnupg 2.1 when running without GPG_AGENT_INFO
 - Added support for having a default username
