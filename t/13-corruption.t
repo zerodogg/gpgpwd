@@ -9,6 +9,16 @@ use FindBin;
 use lib $FindBin::Bin;
 use TestLib;
 
+my $gpg;
+if(InPath('gpg2'))
+{
+    $gpg = 'gpg2';
+}
+else
+{
+    $gpg = 'gpg';
+}
+
 my ($th,$testfile) = tempfile('gpgpwdt-XXXXXXXX',TMPDIR => 1);
 close($th);
 unlink($testfile);
@@ -22,7 +32,7 @@ t_expect('Decryption failed: GPG did not return any data','GPG corruption error'
 t_exitvalue('nonzero','Corruption should exit with nonzero');
 
 unlink($testfile);
-open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
+open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
 print {$o} 'garbage';
 close($o);
 eSpawn(qw(get anothertest));
@@ -31,7 +41,7 @@ t_expect("file, or the file is corrupt.",'JSON corruption error #2');
 t_exitvalue('nonzero','Failing to decode should exit with nonzero');
 
 unlink($testfile);
-open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
+open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
 print {$o} '{ }';
 close($o);
 eSpawn(qw(get anothertest));
@@ -39,7 +49,7 @@ t_expect('-re','Detected possible corruption in \S+ - refusing to continue','Emp
 t_exitvalue('nonzero','Empty JSON data error should exit with nonzero');
 
 unlink($testfile);
-open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
+open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
 print {$o} '{ "pwds":{}, "gpgpwdDataVersion":3 }';
 close($o);
 eSpawn(qw(get anothertest));
@@ -47,7 +57,7 @@ t_expect('pre-2 dataformat claiming to be 2+. Someone has modified your password
 t_exitvalue('nonzero','Unsigned v2 data error should exit with nonzero');
 
 unlink($testfile);
-open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
+open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --encrypt --output),$testfile);
 print {$o} "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA1\n\n";
 print {$o} '{ "pwds":{}, "gpgpwdDataVersion":3 }';
 print {$o} "\n-----BEGIN PGP SIGNATURE-----\nVersion: GnuPG v2.0.22 (GNU/Linux)\nComment: gpgpwd password file.\n";
@@ -62,14 +72,14 @@ unlink($testfile);
 my $stderr;
 open($stderr, '>&',\*STDERR);
 open(STDERR,'>','/dev/null');
-open2(my $out, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
+open2(my $out, $o,$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
 print {$o} '{ "pwds":{"testpw":{"pwd":"f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"}}, "gpgpwdDataVersion":3 }'."\n";
 close($o);
 {
     local $/ = undef;
     my $data = <$out>;
     close($out);
-    open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt --output),$testfile);
+    open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt --output),$testfile);
     print {$o} $data;
     close($o);
 }

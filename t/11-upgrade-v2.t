@@ -13,6 +13,16 @@ use FindBin;
 use lib $FindBin::Bin;
 use TestLib;
 
+my $gpg;
+if(InPath('gpg2'))
+{
+    $gpg = 'gpg2';
+}
+else
+{
+    $gpg = 'gpg';
+}
+
 my ($th,$testfile) = tempfile('gpgpwdt-XXXXXXXX',TMPDIR => 2);
 close($th);
 unlink($testfile);
@@ -27,7 +37,7 @@ set_gpgpwd_database_path($testfile);
     open($stderr, '>&',\*STDERR);
     open(STDERR,'>','/dev/null');
 
-    open2($childOut, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt));
+    open2($childOut, $o,$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt));
     print {$o} 'testpassword';
     close($o);
     local $/ = undef;
@@ -36,14 +46,14 @@ set_gpgpwd_database_path($testfile);
     $encPW = encode_base64($encPW);
     chomp($encPW);
 
-    open2($childOut, $o,qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
+    open2($childOut, $o,$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --clearsign));
     print {$o} '{ "pwds":{"testpw":"'.$encPW.'"}, "gpgpwdDataVersion":2 }'."\n";
     close($o);
     local $/ = undef;
     my $data = <$childOut>;
     close($childOut);
 
-    open($o,'|-',qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt --output),$testfile);
+    open($o,'|-',$gpg,qw(--gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed --no-tty --encrypt --output),$testfile);
     print {$o} $data;
     close($o);
 
