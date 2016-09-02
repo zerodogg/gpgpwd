@@ -52,10 +52,3 @@ SKIP:
 };
 
 unlink($testfile);
-
-# Purpose: Check for a file in path
-# Usage: InPath(FILE)
-sub InPath
-{
-    foreach (split ':', $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return;
-}

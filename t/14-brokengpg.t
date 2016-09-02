@@ -10,13 +10,6 @@ use FindBin;
 use lib $FindBin::Bin;
 use TestLib;
 
-# Purpose: Check for a file in path
-# Usage: InPath(FILE)
-sub InPath
-{
-    foreach (split /:/, $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return 0;
-}
-
 # Purpose: Get the version of a shell utility
 # Usage: version = getVersionFrom('command');
 sub getVersionFrom

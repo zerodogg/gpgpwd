@@ -7,7 +7,7 @@ use Expect;
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
 use File::Temp qw(tempdir);
-our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd);
+our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd InPath);
 
 our $e;
 our $testfile;
@@ -105,6 +105,11 @@ sub getCmd
         return ('perl',$dir.'/../'.$binName,@_);
     }
     return ('perl',$dir.'/../'.$binName,'--password-file',$testfile,@_);
+}
+
+sub InPath
+{
+    foreach (split /:/, $ENV{PATH}) { if (-x "$_/@_" and ! -d "$_/@_" ) {    return "$_/@_"; } } return 0;
 }
 
 1;
