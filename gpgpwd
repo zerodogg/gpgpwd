@@ -40,7 +40,7 @@ use constant {
 };
 
 my $VERSION          = '0.7.1';
-my @gpg              = qw(gpg --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
+my @gpg              = qw(gpg2 --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
 my $dataVersion      = 4;
@@ -2866,18 +2866,15 @@ sub initialize
         pDie('Failed to locate gpg which is required for gpgpwd to work, unable to continue'."\n");
     }
     elsif (
-            # If we don't have gpg(1) then we need to use gpg2
-            !InPath('gpg')
-            # If we have both gpg(1) and gpg2, check if gpg is a symlink to gpg2,
-            # if it is then enable gpg2-mode
-            || (InPath('gpg2') && -l InPath('gpg') && basename(readlink(InPath('gpg'))) eq 'gpg2')
+            # If we don't have gpg2 then we need to use gpg1
+            !InPath('gpg2')
         )
     {
         # Note: If gpg isn't installed then we *know* gpg2 is installed,
         # because if neither is installed we refuse to run at all (test at the
         # top of main() )
-        printv(V_INFO,'Using gpg2 instead of gpg'."\n");
-        $gpg[0] = 'gpg2';
+        printv(V_INFO,'Using gpg instead of gpg2'."\n");
+        $gpg[0] = 'gpg';
     }
 
     # Verify gpg keys on any upgrade

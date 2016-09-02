@@ -1,4 +1,6 @@
 Version 0.7.1
+- Handle both gpg and gpg2 being installed at the same time better
+    (gpgpwd will now default to gpg2 if both are installed)
 - Properly support renaming of alias targets
 - Fixed handling of cases where gpg --version fails
 - Added support for gpg 2.1.15
