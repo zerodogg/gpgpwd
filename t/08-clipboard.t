@@ -18,12 +18,12 @@ SKIP:
     if (!defined $ENV{DISPLAY} || !length($ENV{DISPLAY}))
     {
         $ENV{GPGPWD_TEST_NO_IMPORTANT_SKIP} && die('No $DISPLAY, can not complete tests');
-        skip('No $DISPLAY',5);
+        skip('No $DISPLAY',6);
     }
     if (!InPath('xclip'))
     {
         $ENV{GPGPWD_TEST_NO_IMPORTANT_SKIP} && die('xclip not installed, can not complete tests');
-        skip('xclip is not installed',5);
+        skip('xclip is not installed',6);
     }
     eSpawn(qw(add testpassword));
     t_expect('Password> ','Password prompt');
