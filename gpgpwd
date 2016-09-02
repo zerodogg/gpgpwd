@@ -2958,6 +2958,17 @@ sub getVersionFrom
 # Usage: debugInfo();
 sub debugInfo
 {
+    my $configOverride = shift;
+    # Don't require initialize() to succeed in order to get the debug output.
+    $pDieUsepExit = 0;
+    try
+    {
+        initialize($configOverride);
+    }
+    catch
+    {
+        warn('warning: initialize() failed: '.$_."\n");
+    };
     # Don't require the agent to be working in order to get the debug output.
     try
     {
@@ -3100,6 +3111,11 @@ sub main
         },
     ) or pDie('See --help for more information'."\n");
 
+    if ($debugInfo)
+    {
+        debugInfo($configOverride);
+    }
+
     initialize($configOverride);
 
     my $command = shift(@ARGV);
@@ -3109,11 +3125,7 @@ sub main
         usage(0);
     }
 
-    if ($debugInfo)
-    {
-        debugInfo();
-    }
-    elsif ($command eq 'get')
+    if ($command eq 'get')
     {
         getPWCommand(@ARGV);
     }
