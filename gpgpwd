@@ -2958,7 +2958,11 @@ sub getVersionFrom
 # Usage: debugInfo();
 sub debugInfo
 {
-    autoInitGPGAgent();
+    # Don't require the agent to be working in order to get the debug output.
+    try
+    {
+        autoInitGPGAgent();
+    };
 
     print "gpgpwd version $VERSION\n";
     print "\n";
