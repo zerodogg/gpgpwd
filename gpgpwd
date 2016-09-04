@@ -366,7 +366,7 @@ sub verifyGPGKeys
     }
     $verified = 1;
 
-    my $keyList = gpgIO(undef,[ qw(--list-keys) ],false,true);
+    my $keyList = gpgIO(undef,[ qw(--list-keys) ], { captureSTDERR => true });
     $keyList //= '';
     $keyList =~ s/^gpg:.*//g;
 
@@ -377,19 +377,24 @@ sub verifyGPGKeys
 }
 
 # Purpose: Write some data to gpg and return the output from gpg
-# Usage: $output = gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
-#   or : ($output,$gpgExitStatus) = gpgIO(data,[ gpgCommands ], requiresUnlocked = false, captureSTDERR = false)
+# Usage: $output = gpgIO(data,[ gpgCommands ], { OPTS? })
+#   or : ($output,$gpgExitStatus,$statusInfo) = gpgIO(data,[ gpgCommands ], { OPTS? })
 # data is the data to be written to gpg
 # gpgCommands is an arrayref of parameters for gpg
-# requiresUnlocked is a boolean. Set it to true if the provided gpgCommands require
-#   the key to be unlocked
-# captureSTDERR is a boolean. Set it to true to capture both stdout and stderr
+# { OPTS? } is a hash (or undef) with zero or more of the following:
+#   requiresUnlocked => boolean. Set it to true if the provided gpgCommands require
+#       the key to be unlocked. Default=false.
+#   captureSTDERR is a boolean. Set it to true to capture both stdout and stderr.
+#       Default=false.
 sub gpgIO
 {
     my $data             = shift;
     my $commandList      = shift;
-    my $requiresUnlocked = shift;
-    my $captureSTDERR    = shift;
+    my $opts             = shift;
+    if (!defined $opts)
+    {
+        $opts = {};
+    }
     my @commands         = @{$commandList};
 
     my $output;
@@ -397,7 +402,7 @@ sub gpgIO
     # Used to store the return value when using open() directly
     my $openRet;
 
-    if (!$captureSTDERR)
+    if (!$opts->{captureSTDERR})
     {
         open($stderr, '>&',\*STDERR);
         # This is used to silence useless warnings from gnupg when using the
@@ -422,12 +427,12 @@ sub gpgIO
 
     # If we're not requiring an agent then gpg will output some messages. To
     # differenciate it from "our" output, encase it in a text block.
-    if (!gpgAgentRunning() && $requiresUnlocked)
+    if (!gpgAgentRunning() && $opts->{requiresUnlocked})
     {
         print '-- gpg --'."\n";
     }
     # Use open3 to capture stdout+stderr
-    if ($captureSTDERR)
+    if ($opts->{captureSTDERR})
     {
         printv(V_LOG,'Talking to gpg with open3: '.join(' ',@gpgCommand)."\n");
         $pid = open3($in,$out,$err,@gpgCommand) or reOut($stderr,true,'Failed to open3() up communication with gpg: '.$!."\n");
@@ -502,7 +507,7 @@ sub gpgIO
         }
     }
 
-    if (!$captureSTDERR)
+    if (!$opts->{captureSTDERR})
     {
         open(STDERR,'>&',$stderr);
     }
@@ -521,7 +526,7 @@ sub gpgIO
     }
     # If we're not requiring an agent then gpg will output some messages. To
     # differenciate it from "our" output, encase it in a text block.
-    if (!gpgAgentRunning() && $requiresUnlocked)
+    if (!gpgAgentRunning() && $opts->{requiresUnlocked})
     {
         print '-- --- --'."\n";
     }
@@ -615,7 +620,7 @@ sub gpgDecryptString
     };
 
     # Decrypt the string
-    my ($output,$gpgRetVal) = gpgIO($string,[ qw(--decrypt) ],true);
+    my ($output,$gpgRetVal) = gpgIO($string,[ qw(--decrypt) ],{ requiresUnlocked => true});
     if ($gpgRetVal != 0)
     {
         statusOut('');
@@ -667,7 +672,7 @@ sub verifyMetadataSignature
     $ENV{LC_ALL} = 'C';
 
     # Retrieve which pubkey the database is encrypted with
-    my ($pubkey,$pkRet) = gpgIO(undef,[ qw(--verbose --decrypt --list-only), $path ],false,true);
+    my ($pubkey,$pkRet) = gpgIO(undef,[ qw(--verbose --decrypt --list-only), $path ], { captureSTDERR => true });
     # If we didn't get a list then something went wrong
     if (!defined($pubkey))
     {
@@ -689,7 +694,7 @@ sub verifyMetadataSignature
     }
 
     # Verify the signature
-    my ($signature,$signRet) = gpgIO($data,[ qw(--verify) ],false,true);
+    my ($signature,$signRet) = gpgIO($data,[ qw(--verify) ], { captureSTDERR => true });
 
     # If no data was returned then something went wrong with gpg
     if (!defined($signature))
@@ -1152,11 +1157,11 @@ sub writeData
     # Force the signature key to get unlocked. This is fairly ugly, but we need to
     # be able to write to and read from the gpg process, which can interfere with
     # password prompts, thus executing this first here avoids having to do that.
-    gpgIO(undef, [ qw(--clearsign --output /dev/null /dev/null) ],0);
+    gpgIO(undef, [ qw(--clearsign --output /dev/null /dev/null) ]);
 
     # Sign the JSON string. The comment contains quick instructions on decrypting
     # the embedded passwords.
-    $encoded = gpgIO(\@encodedSplit,[ qw(--clearsign --comment),'gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d' ], 1);
+    $encoded = gpgIO(\@encodedSplit,[ qw(--clearsign --comment),'gpgpwd password file. Each password is gpg encrypted, so you will need to decrypt each password you want to look up manually: echo PASSWORD-STRING|gpg -d' ], { requiresUnlocked => true });
 
     # Make a backup of the current file
     if (-e $path)
