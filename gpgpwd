@@ -37,6 +37,7 @@ use constant {
     V_INFO => 1,
     V_LOG => 2,
     V_DEBUG => 3,
+    V_TRACE => 4,
 };
 
 my $VERSION          = '0.7.2';
@@ -68,8 +69,16 @@ sub printv
         $prefixes[V_INFO]  = 'info';
         $prefixes[V_LOG]   = 'log';
         $prefixes[V_DEBUG] = 'debug';
+        $prefixes[V_TRACE] = 'trace';
         printf('[gpgpwd %-5s] ',$prefixes[$level]);
-        print @_;
+        if(ref($_[0]))
+        {
+            print encode_json(\@_)."\n";
+        }
+        else
+        {
+            print @_;
+        }
     }
     return 1;
 }
