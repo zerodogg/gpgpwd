@@ -898,6 +898,7 @@ sub loadJSONStructure
     # If there's no file at $path we just return the default (empty) structure.
     if (!-e $path)
     {
+        printv(V_DEBUG,$path.': does not exist. Returning empty data structure from loadJSONStructure()'."\n");
         return (0, {
             gpgpwdDataVersion => $dataVersion,
             pwds => {},
