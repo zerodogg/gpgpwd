@@ -1,3 +1,6 @@
+Version 0.7.2
+- Added support for using a gpg2 agent with gpg1
+
 Version 0.7.1
 - Handle both gpg and gpg2 being installed at the same time better
     (gpgpwd will now default to gpg2 if both are installed)

@@ -191,7 +191,7 @@ sub pExit
     if (defined($autoGPGAgent) && $autoGPGAgent > -1 && defined($ENV{GPG_AGENT_INFO}))
     {
         my @GPGInfo = split(/:/,$ENV{GPG_AGENT_INFO});
-        if(defined $GPGInfo[1])
+        if(defined $GPGInfo[1] && $GPGInfo[1] != -1)
         {
             kill('SIGINT',$GPGInfo[1]);
             printv(V_DEBUG,'Killed our gpg agent ('.$GPGInfo[1].')'."\n");
@@ -250,18 +250,25 @@ sub autoInitGPGAgent
         {
             printv(V_DEBUG,'Autostarting gpg-agent'."\n");
             # Start the agent
-            $autoGPGAgent = open2(my $out, my $in, qw(gpg-agent --daemon));
+            $autoGPGAgent = open3(my $in, my $out, my $err, qw(gpg-agent --daemon));
             # Read the first line containing the GPG_AGENT_INFO variable
             my $info = <$out>;
             # Parse the read data if possible
             if (defined $info)
             {
                 # Parse out the variable contents
-                $info =~ s/GPG_AGENT_INFO=(\S+); export GPG_AGENT_INFO/$1/;
-                chomp($info);
-                # Set the GPG_AGENT_INFO environment variable for gpg to use
-                $ENV{GPG_AGENT_INFO} = $info;
-                printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
+                if ($info =~ s/GPG_AGENT_INFO=(\S+); export GPG_AGENT_INFO/$1/)
+                {
+                    chomp($info);
+                    # Set the GPG_AGENT_INFO environment variable for gpg to use
+                    $ENV{GPG_AGENT_INFO} = $info;
+                    printv(V_DEBUG,'gpg-agent['.$autoGPGAgent.'] started and listening at '.$info."\n");
+                }
+                else
+                {
+                    $info = undef;
+                    printv(V_DEBUG,'gpg-agent didn\'t output status info'."\n");
+                }
             }
             # Disable tty
             printv(V_DEBUG,'Enabling agent requirement (--no-tty)'."\n");
@@ -270,6 +277,13 @@ sub autoInitGPGAgent
             if ($gpg[0] ne 'gpg2')
             {
                 push(@gpg,'--use-agent');
+            }
+            my $home = $ENV{GNUPGHOME} // $ENV{HOME}.'/.gnupg';
+            # Enable agent emulation for gpgv1 with agent-v2
+            if($gpg[0] ne 'gpg2' && defined $home && -e $home.'/S.gpg-agent')
+            {
+                printv(V_DEBUG,'Emulating gpg-agent v1 support with gpg-agent v2'."\n");
+                $ENV{GPG_AGENT_INFO} = $home.'/S.gpg-agent:-1:1';
             }
             if (!gpgAgentRunning())
             {
@@ -310,6 +324,12 @@ sub gpgAgentRunning
         # GPG_AGENT_INFO is a :-separated list of values. The first value is a path
         # to the gpg-agent socket. The second is the PID of the agent.
         my @GPGInfo   = split(/:/,$ENV{GPG_AGENT_INFO});
+        # If the second parameter is -1, we're emulating gpg-agent v1 in v2, assume
+        # that it is alive.
+        if (-e $GPGInfo[0] && $GPGInfo[1] == -1)
+        {
+            return 1;
+        }
         # Make sure the gpg-agent socket exists, and that its process is alive
         if (-e $GPGInfo[0] && kill(0,$GPGInfo[1]))
         {
