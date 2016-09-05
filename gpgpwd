@@ -39,7 +39,7 @@ use constant {
     V_DEBUG => 3,
 };
 
-my $VERSION          = '0.7.1';
+my $VERSION          = '0.7.2';
 my @gpg              = qw(gpg2 --gnupg --default-recipient-self --no-verbose --quiet --personal-compress-preferences uncompressed);
 my $gpgpwdDir;
 my $storagePath;
@@ -386,7 +386,7 @@ sub verifyGPGKeys
     }
     $verified = 1;
 
-    my $keyList = gpgIO(undef,[ qw(--list-keys) ], { captureSTDERR => true });
+    my $keyList = gpgIO(undef,[ qw(--list-keys) ], { captureSTDERR => true, requiresUnlocked => false });
     $keyList //= '';
     $keyList =~ s/^gpg:.*//g;
 
@@ -436,7 +436,10 @@ sub gpgIO
     }
 
     # Autostart a gpg-agent for us if needed
-    autoInitGPGAgent();
+    if ($opts->{requiresUnlocked})
+    {
+        autoInitGPGAgent();
+    }
 
     # Declare I/O variables
     my($in,$out,$err,$pid,$outputReader);
@@ -1177,7 +1180,7 @@ sub writeData
     # Force the signature key to get unlocked. This is fairly ugly, but we need to
     # be able to write to and read from the gpg process, which can interfere with
     # password prompts, thus executing this first here avoids having to do that.
-    gpgIO(undef, [ qw(--clearsign --output /dev/null /dev/null) ]);
+    gpgIO(undef, [ qw(--clearsign --output /dev/null /dev/null) ], { requiresUnlocked => true });
 
     # Sign the JSON string. The comment contains quick instructions on decrypting
     # the embedded passwords.
@@ -1190,7 +1193,7 @@ sub writeData
     }
 
     # Write the JSON string encrypted to the supplied file
-    gpgIO($encoded,[ '--encrypt','--output',$path ]);
+    gpgIO($encoded,[ '--encrypt','--output',$path ],{ requiresUnlocked => true });
     chmod(0600,$path);
 
     # Perform some paranoid sanity checks. Verify that the file we just wrote
@@ -1766,6 +1769,9 @@ sub setPassword
 {
     my $data = shift;
     my $name = shift;
+
+    # Ensure the gpg agent has been initialized at this point
+    autoInitGPGAgent();
 
     my ($password, $copied);
     my $alphaNumeric  = 0;
