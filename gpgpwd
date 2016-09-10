@@ -1293,7 +1293,7 @@ sub writeData
     {
         pDie('Fatal error: "'.$path.'" did not exist after writing the file'."\n");
     }
-    elsif(-s $path < 1468)
+    elsif(-s $path < 100)
     {
         pDie('Fatal error: the size of "'.$path.'" is too small'."\n");
     }
