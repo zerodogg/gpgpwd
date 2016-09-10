@@ -7,7 +7,8 @@ use Expect;
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
 use File::Temp qw(tempdir);
-our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd InPath);
+use File::Path qw(remove_tree);
+our @EXPORT = qw(t_wait_eof t_expect t_exitvalue eSpawn getCmd expect_send set_gpgpwd_database_path enable_raw_gpgpwd InPath printd);
 
 our $e;
 our $testfile;
@@ -18,7 +19,23 @@ if (!defined($ENV{GNUPGHOME}))
     $ENV{GNUPGHOME} = $ENV{HOME}.'/.gnupg';
 }
 my $tmpHome = tempdir('gpgpwdt-home-XXXXXXXX',TMPDIR => 1, CLEANUP => 1);
-$ENV{HOME} = $tmpHome;
+if ($ENV{GPGPWD_TESTRUNNER_SECOND})
+{
+    # Under the testrunner we manually clean
+    remove_tree($ENV{HOME}.'/.config');
+}
+else
+{
+    $ENV{HOME} = $tmpHome;
+}
+
+sub printd
+{
+    if ($ENV{GPGPWD_T_DEBUG})
+    {
+        print join(' ',@_)."\n";
+    }
+}
 
 sub t_exitvalue
 {
@@ -39,6 +56,7 @@ sub t_exitvalue
 sub set_gpgpwd_database_path
 {
     $testfile = shift;
+    printd('Set gpgpwd db path to '.$testfile);
 }
 
 sub enable_raw_gpgpwd
@@ -83,6 +101,8 @@ sub eSpawn
     {
         t_wait_eof();
     }
+    my @cmd = getCmd(@_);
+    printd('Command: ',@cmd);
     $e = Expect->spawn(getCmd(@_));
     if (!@ARGV || $ARGV[0] ne '-v')
     {

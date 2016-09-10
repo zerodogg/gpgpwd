@@ -81,5 +81,12 @@ GPGPWD_TEST_NO_IMPORTANT_SKIP ?= 0
 test: sanity
 	@perl '-e' 'eval("use Expect;1") or die("Requires the Expect module to be installed\n")'
 	@env GPGPWD_TEST_NO_IMPORTANT_SKIP=$(GPGPWD_TEST_NO_IMPORTANT_SKIP) perl '-MExtUtils::Command::MM' '-e' 'test_harness(0,undef,undef)' t/*.t
-disttest: GPGPWD_TEST_NO_IMPORTANT_SKIP=1
-disttest: test
+testjail:
+	@perl t/testrunner make --no-print-directory --silent test
+_testNoSkipImportant: GPGPWD_TEST_NO_IMPORTANT_SKIP=1
+_testNoSkipImportant: test
+disttest:
+	@echo "jailed tests:"
+	@make --no-print-directory testjail
+	@echo "local tests:"
+	@make --no-print-directory _testNoSkipImportant

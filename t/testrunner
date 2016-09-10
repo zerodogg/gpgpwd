@@ -1,0 +1,118 @@
+#!/usr/bin/env perl
+# gpgpwd test runner
+# Copyright (C) Eskild Hustvedt 2016
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# This script prepares an environment for unattended testing of gpgpwd:
+# - Imports a dummy GPG key
+# - Sets up a GNUPG directory
+# - Executes whatever command was provided
+
+use 5.010;
+use strict;
+use warnings;
+use File::Temp qw(tempdir);
+use Cwd qw(realpath);
+use Fatal qw(open close tempdir);
+use JSON qw(encode_json decode_json);
+
+# We need to be able to exec ourselves
+if (! -x $0)
+{
+    die($0.': is not executable');
+}
+
+if (! $ENV{GPGPWD_TESTRUNNER_SECOND})
+{
+    # --
+    # Initialize the environment
+    # --
+
+    my $self = realpath($0);
+    # Crete the dummy HOME directory
+    my $targetHome  = realpath(tempdir( 'gpgpwd-testrunner-XXXXXXXXX', CLEANUP => 1 ));
+    # Set up the environment variables
+    $ENV{HOME}      = $targetHome;
+    $ENV{GNUPGHOME} = $targetHome.'/.gnupg';
+    $ENV{LC_ALL}    = 'C';
+    # Store the command we are to run in the environment
+    $ENV{GPGPWD_TESTRUNNER_SECOND} = encode_json(\@ARGV);
+    # Create required directories
+    mkdir($ENV{GNUPGHOME});
+    chmod(0700,$ENV{GNUPGHOME});
+    symlink($ENV{GNUPGHOME},$targetHome.'/.custom-gnupg-home');
+
+    # Start the gpg-agent that will serve the test environment. It will in turn
+    # execute us again, this time with GPGPWD_TESTRUNNER_SECOND set, causing us
+    # to finalize the initialization and run our subprocess.
+    system(qw(gpg-agent --quiet --allow-preset-passphrase --homedir),$targetHome.'/.custom-gnupg-home','--extra-socket',$ENV{GNUPGHOME}.'/S.gpg-agent','--allow-preset-passphrase','--daemon',$self);
+}
+else
+{
+    # --
+    # Finalize the environment and execute subprocess
+    # --
+
+    # Restore the command-line from the environment
+    my @command = @{ decode_json($ENV{GPGPWD_TESTRUNNER_SECOND}) };
+    # Write the private key used for testing to a file.
+    open(my $out,'>',$ENV{HOME}.'/gpgkey');
+    print {$out} '-----BEGIN PGP PRIVATE KEY BLOCK-----
+
+lQHYBFbvKSwBBADhWIbqCc9kM6K9qfraIFnmwMai0vsJuSObYXOEskjpC92bPpDc
+MX2VoWcUHiAaEtjDzsb9wgT5uPC5UOJug5BGXhCQH4JVyspzfYqHn+iEQSqL9Kdj
+mQdlaPwl9RDSjU6EwuriKcgZnQzfHmT0OpDi18h1pnmQm5TvlarvwWkBEQARAQAB
+AAP7BLpVwk1IY6LNtEr/r1nkaPn8cOgaSj7vJ1BpGwyeiP0tvhcW9Pe42c3UGtDy
+/XkNwTXyaNqMPi0KJ+kxhv4NpdI1oNRel56gClpPKZbTr2nqF3zsxSIW2hawU7FC
+dlKFpEo+b3JefUoJqZofYQlskI4ImTrExdGlLZN9OXQhh10CAOOznCgAObOHWYRI
+ZpJ5BwpOYF97aVXOwmSMr3n1z5x1DsL23JxFDtOmt6zsKUrIeKVIBU8CiM92J0vj
++145Q28CAP1Z94E0Sao5DT+KA6NCwrwSdd28Ek5lGeMID5lsow9j1Dqm0FdYSK/m
+r8Sy2g3VFEGNy4CcV/bBpncOdYgNw38B/Ru2EdHtB+CpIB35p9LtSzSYV2Ul0AiM
+BeIx0eyu8osow8bc1scZF1lh0VmNnNYL5aCrpIkWFxo0DTrU3IzminWfILQyR3Bn
+cHdkIFRlc3QgS2V5IChETyBOT1QgVVNFKSA8dGVzdGtleUBleGFtcGxlLmNvbT6I
+twQTAQgAIQUCVu8pLAIbAwULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRCqcHB8
+1A3gTmTMA/0aFSsKqWf/tr6FOTOQ1sPcBEISAHtCAqr16Hz2Cd5ER2NECYxLffFz
+ecwVuT5hFEXOvrA6xpMQW8CwGty3rdB+U2RZkVQ5WoF++pcr40PDwVsfCBSAuFOB
+rJI2+ZxenhtJKU/DVrf992hbXUBLb3VoW7HeFYavq3hei/Qtso0AT50B2ARW7yks
+AQQAxNuU5gGbWikEjw5A2XmWCf6VAiUydYEI2HsM+AUpVpetIHYPvyhxh5fFKrip
+sl3g1Gj3UQg+6oCTiklVJnug+BYuOcZFGRHk3I1DSaGF9t5eIVJcPO8RqpA9z6ub
+sPz84wcd2i9zRV4E7P0lWuSfrFjWm1+l3hPxfL6vNIvouHcAEQEAAQAD/RgVCgtz
+5DQMvd4HpFn2dysUgINurCmWdiU63cSe/QZML9sUwQBloN3cQeaOs1PQCufGn4Vu
+OM7UmTgFmJZzRqcGacgvOzt5gwPm+xBwS1NeRvKdc0VigTOn6zjYn2q8iaD3BWVV
+u2mbQjs2R5/ZY3qD6PNQus1du9iiX/0hvqEBAgDPBP0KeLeJXIurPk5QXbgwK7Zy
+/LPvJkKqYq00rmiDrixBVeMdCI7wuD844qQN4pzdSLmztm3932t8c25wNHEXAgDz
+bxqkRfjneqWgnZZEDUNwsCdhH1PaSUxxtMsQcR0tV9HJXfxr7U859b+A/NL9oWPi
+eUH2wY+S/N/4xdDd5M+hAfwNdqHCeu2y8H8W43Q/Q8MpZ3N4ZIhc6jqBgyZcjU/l
+rvCotUVfZkMsDJi56BtDwZ8lEI6BdWQEAS/FA/1igQ5KoiKInwQYAQgACQUCVu8p
+LAIbDAAKCRCqcHB81A3gTsy9BADWTNF0o5UCiSLrIt+zzwxo+rUtianvlHjZb6Od
+NYBhxOU7/AAihQuTfHDIiJlPB5TYwyf2Zj6RbBFFGeU44s9mTiq4sgrbbITUmqzY
+65hUdQZ2qeF5IHSMwfy8tXZnxyAwL11+ZsjkL+zOgQUD2EANJ95DQFuigf7pM8fv
+M0zKpA==
+=kRnj
+-----END PGP PRIVATE KEY BLOCK-----';
+    close($out);
+    # Import the private key
+    system(qw(gpg --quiet --import),$ENV{HOME}.'/gpgkey');
+
+    # Finally, run the command (or error out)
+    if (@command)
+    {
+        system(@command);
+    }
+    else
+    {
+        die('No command supplied');
+    }
+}
