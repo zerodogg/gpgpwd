@@ -57,7 +57,7 @@ if (! $ENV{GPGPWD_TESTRUNNER_SECOND})
     # Start the gpg-agent that will serve the test environment. It will in turn
     # execute us again, this time with GPGPWD_TESTRUNNER_SECOND set, causing us
     # to finalize the initialization and run our subprocess.
-    system(qw(gpg-agent --quiet --allow-preset-passphrase --homedir),$targetHome.'/.custom-gnupg-home','--extra-socket',$ENV{GNUPGHOME}.'/S.gpg-agent','--allow-preset-passphrase','--daemon',$self);
+    system(qw(gpg-agent --quiet --homedir),$targetHome.'/.custom-gnupg-home','--daemon',$self);
 }
 else
 {
