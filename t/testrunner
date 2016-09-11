@@ -113,6 +113,13 @@ M0zKpA==
     # Import the private key
     system(qw(gpg --quiet --import),$ENV{HOME}.'/gpgkey');
 
+    # Write a dummy git config
+    open($out,'>',$ENV{HOME}.'/.gitconfig');
+    print {$out} '[user]
+	name = gpgpwd testuser
+	email = testuser@example.org';
+
+
     # Finally, run the command (or error out)
     if (@command)
     {
