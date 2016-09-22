@@ -10,5 +10,5 @@ perl:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gnupg2 xclip git gnupg-agent
-install: cpanm --quiet --notest JSON Try::Tiny Expect
+install: cpanm --quiet --notest JSON Try::Tiny Expect Term::ReadLine::Gnu
 script: make testjail
