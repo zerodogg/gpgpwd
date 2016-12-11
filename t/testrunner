@@ -34,6 +34,8 @@ if (! -x $0)
     die($0.': is not executable');
 }
 
+$ENV{GPGPWD_TESTRUNNER_ACTIVE} = 1;
+
 if (! $ENV{GPGPWD_TESTRUNNER_SECOND})
 {
     # --
