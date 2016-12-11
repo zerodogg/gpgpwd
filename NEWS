@@ -1,6 +1,9 @@
 Version 0.7.2
 - Added support for using a gpg2 agent with gpg1
 - Now uses gpg --status-file instead of parsing gpg output in most cases
+- Fixed a bug that in certain very specific setups could cause gpgpwd to
+    encrypt its database with a different key from the one that it was
+    decrypted with.
 
 Version 0.7.1
 - Handle both gpg and gpg2 being installed at the same time better

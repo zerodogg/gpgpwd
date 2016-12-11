@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # gpgpwd
-# Copyright (C) Eskild Hustvedt 2012, 2013, 2014, 2015
+# Copyright (C) Eskild Hustvedt 2012, 2013, 2014, 2015, 2016
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ my $autoGPGAgent;
 my @clipboardTargets;
 my $pDieUsepExit     = 1;
 my $config           = {};
+my $runtimeCache     = {};
 
 # = = = = = = = = =
 # Message helpers
@@ -461,6 +462,12 @@ sub gpgIO
 
     # Generate the complete gpg commandline
     my @gpgCommand = @gpg;
+    if ($runtimeCache->{key})
+    {
+        # Since we already have a key that was used for this database, we explicitly
+        # tell gpg to reuse it to make sure we don't re-encrypt with a different key
+        push(@gpgCommand,'--default-key',$runtimeCache->{key},'--local-user',$runtimeCache->{key});
+    }
     push(@gpgCommand,@commands);
     # Enable status
     if ($opts->{useStatus})
@@ -840,6 +847,9 @@ sub verifyMetadataSignature
     printv(V_DEBUG,'gpg signature validation step succeeded'."\n");
 
     printv(V_DEBUG,'signing key is '.$sigKey.', pubkey for encryption is '.$pubkey."\n");
+
+    $runtimeCache->{sigKey} = $sigKey;
+    $runtimeCache->{key} = $pubkey;
 
     # Retrieve a list of all signatures matching the pubkey
     my ($keyList,$keyRet) = gpgIO(undef, [ qw(--with-colons --list-sigs), $pubkey ]);
