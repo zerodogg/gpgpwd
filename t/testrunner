@@ -42,7 +42,7 @@ if (! $ENV{GPGPWD_TESTRUNNER_SECOND})
 
     my $self = realpath($0);
     # Crete the dummy HOME directory
-    my $targetHome  = realpath(tempdir( 'gpgpwd-testrunner-XXXXXXXXX', CLEANUP => 1 ));
+    my $targetHome  = realpath(tempdir( 'gpgpwd-testrunner-XXXXXXXXX', CLEANUP => 1, TMPDIR => 1 ));
     # Set up the environment variables
     $ENV{HOME}      = $targetHome;
     $ENV{GNUPGHOME} = $targetHome.'/.gnupg';
