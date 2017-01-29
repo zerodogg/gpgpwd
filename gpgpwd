@@ -480,7 +480,7 @@ sub gpgIO
             TEMPLATE => 'gpg-gpgpwd-communication-XXXXXXXXXX',
             SUFFIX => '.tmp',
             TMPDIR => 1,
-            UNLINK => false
+            UNLINK => true
         );
         my $gpg = shift(@gpgCommand);
         unshift(@gpgCommand,$gpg,'--status-file',$gpgTMP);
